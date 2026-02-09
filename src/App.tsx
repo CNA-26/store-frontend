@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
+import { Routes, Route } from "react-router-dom";
+import CheckoutPage from "./pages/CheckoutPage";
 
-function App() {
+function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   return (
     <div className="min-h-screen bg-monstera-light">
@@ -152,6 +154,16 @@ function App() {
       </footer>
     </div>
   )
+}
+
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/checkout" element={<CheckoutPage />} />
+    </Routes>
+  );
 }
 
 export default App
