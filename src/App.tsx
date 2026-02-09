@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { Routes, Route } from "react-router-dom";
 import CheckoutPage from "./pages/CheckoutPage";
+import ProductsPage from "./pages/ProductsPage";
 
+import { Link } from "react-router-dom";
 function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   return (
@@ -49,9 +51,11 @@ function HomePage() {
               From rare monsteras to easy-care succulents.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
-              <button className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105">
-                Shop Plants
-              </button>
+              <Link to="/products">
+                <button className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105">
+                  Shop Plants
+                </button>
+              </Link>
               <button className="bg-monstera-lime hover:bg-monstera-brown text-monstera-dark hover:text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105">
                 View Collection
               </button>
@@ -161,6 +165,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/products" element={<ProductsPage />} />
       <Route path="/checkout" element={<CheckoutPage />} />
     </Routes>
   );
