@@ -1,4 +1,6 @@
-import { useState } from "react";
+// no local react hooks needed
+import { Link } from "react-router-dom";
+import { useCart } from "../contexts/CartContext";
 
 type Product = {
   id: string;
@@ -15,8 +17,7 @@ const products: Product[] = [
 ];
 
 export default function ProductPage() {
-  const [cartCount, setCartCount] = useState(0);
-
+  const { addToCart, cartCount } = useCart();
   return (
     <div className="min-h-screen bg-monstera-light">
       <header className="bg-monstera-dark shadow-lg">
@@ -27,6 +28,13 @@ export default function ProductPage() {
           <p className="mt-3 text-center text-monstera-light text-lg">
             Browse plants
           </p>
+          <div className="mt-4 text-center">
+            <Link to="/">
+              <button className="bg-monstera-lime hover:bg-monstera-brown text-monstera-dark font-bold py-2 px-4 rounded-full">
+                Back to homepage
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -45,7 +53,7 @@ export default function ProductPage() {
             <ProductCard
               key={product.id}
               product={product}
-              onAdd={() => setCartCount((c) => c + 1)}
+              onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
             />
           ))}
         </div>

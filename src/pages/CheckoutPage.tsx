@@ -1,23 +1,26 @@
 import { useMemo, useState } from "react";
+import { useCart } from "../contexts/CartContext";
+import { Link } from "react-router-dom";
 
 type Delivery = "pickup" | "posti" | "home";
 type Payment = "card" | "bank" | "mobilepay" | "invoice";
 
 export default function CheckoutPage() {
-  // temp)
-  const items = [
+  const { cart, removeFromCart, hasInteracted } = useCart();
+
+  // fallback placeholder items only before user interacts with the cart
+  const placeholder = [
     { id: "1", name: "Monstera Deliciosa", price: 29.99, qty: 1 },
     { id: "2", name: "Succulent Mix", price: 19.99, qty: 1 },
   ];
+
+  const items = cart.length ? cart : hasInteracted ? [] : placeholder;
 
   const [delivery, setDelivery] = useState<Delivery>("posti");
   const [payment, setPayment] = useState<Payment>("bank");
   const [accept, setAccept] = useState(true);
 
-  const subtotal = useMemo(
-    () => items.reduce((s, it) => s + it.price * it.qty, 0),
-    [items]
-  );
+  const subtotal = useMemo(() => items.reduce((s, it) => s + it.price * it.qty, 0), [items]);
 
   const deliveryCost = useMemo(() => {
     if (delivery === "pickup") return 0;
@@ -38,6 +41,13 @@ export default function CheckoutPage() {
           <p className="mt-3 text-center text-monstera-light text-lg">
             Checkout
           </p>
+          <div className="mt-4 text-center">
+            <Link to="/">
+              <button className="bg-monstera-lime hover:bg-monstera-brown text-monstera-dark font-bold py-2 px-4 rounded-full">
+                Back to homepage
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -183,7 +193,19 @@ export default function CheckoutPage() {
                     <p className="font-bold text-monstera-dark">{it.name}</p>
                     <p className="text-monstera-brown text-sm">Qty: {it.qty}</p>
                   </div>
-                  <p className="font-bold text-monstera-green">{eur(it.price * it.qty)}</p>
+                  <div className="flex items-center gap-3">
+                    <p className="font-bold text-monstera-green">{eur(it.price * it.qty)}</p>
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(it.id)}
+                      title="Remove"
+                      className="p-2 rounded-full hover:bg-monstera-light"
+                    >
+                      <svg className="w-5 h-5 text-monstera-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 3h4l1 4H9l1-4z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

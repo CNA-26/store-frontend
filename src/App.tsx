@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
-import { Routes, Route } from "react-router-dom";
+import { useState } from 'react'
+import { Routes, Route, Link } from "react-router-dom";
 import CheckoutPage from "./pages/CheckoutPage";
 import ProductsPage from "./pages/ProductsPage";
-
-import { Link } from "react-router-dom";
+import { CartProvider, useCart } from "./contexts/CartContext";
 function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const { addToCart } = useCart();
   return (
     <div className="min-h-screen bg-monstera-light">
       <header className="bg-monstera-dark shadow-lg">
@@ -102,7 +102,7 @@ function HomePage() {
                   <p className="text-monstera-brown mb-4">The classic Swiss Cheese Plant</p>
                   <div className="flex justify-between items-center">
                     <span className="text-2xl font-bold text-monstera-green">€29.99</span>
-                    <button className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
+                    <button onClick={() => addToCart({ id: '1', name: 'Monstera Deliciosa', price: 29.99 })} className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
                       Add to Cart
                     </button>
                   </div>
@@ -120,7 +120,7 @@ function HomePage() {
                   <p className="text-monstera-brown mb-4">Easy-care collection of 3 succulents</p>
                   <div className="flex justify-between items-center">
                     <span className="text-2xl font-bold text-monstera-green">€19.99</span>
-                    <button className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
+                    <button onClick={() => addToCart({ id: '2', name: 'Succulent Mix', price: 19.99 })} className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
                       Add to Cart
                     </button>
                   </div>
@@ -138,7 +138,7 @@ function HomePage() {
                   <p className="text-monstera-brown mb-4">Beautiful trailing plant for beginners</p>
                   <div className="flex justify-between items-center">
                     <span className="text-2xl font-bold text-monstera-green">€24.99</span>
-                    <button className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
+                    <button onClick={() => addToCart({ id: '3', name: 'Pothos Marble', price: 24.99 })} className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
                       Add to Cart
                     </button>
                   </div>
@@ -163,11 +163,32 @@ function HomePage() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/products" element={<ProductsPage />} />
-      <Route path="/checkout" element={<CheckoutPage />} />
-    </Routes>
+    <CartProvider>
+      <CartIcon />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+      </Routes>
+    </CartProvider>
+  );
+}
+
+function CartIcon() {
+  const { cartCount } = useCart();
+  return (
+    <div className="fixed right-4 top-4 z-50">
+      <Link to="/checkout" className="relative inline-flex items-center p-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light">
+        <svg className="w-6 h-6 text-monstera-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4" />
+          <circle cx="10" cy="20" r="1" />
+          <circle cx="18" cy="20" r="1" />
+        </svg>
+        {cartCount > 0 && (
+          <span className="absolute -top-2 -right-2 bg-monstera-lime text-monstera-dark rounded-full text-xs font-bold px-2 py-0.5">{cartCount}</span>
+        )}
+      </Link>
+    </div>
   );
 }
 
