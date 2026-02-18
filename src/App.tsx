@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Routes, Route, Link } from "react-router-dom";
+import { useState, useEffect } from 'react'
+import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import CheckoutPage from "./pages/CheckoutPage";
 import ProductsPage from "./pages/ProductsPage";
 import WishlistPage from "./pages/WishlistPage";
@@ -169,6 +169,7 @@ function App() {
       <WishlistProvider>
         <CartIcon />
         <WishlistIcon />
+        <CartNotification />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
@@ -210,6 +211,71 @@ function WishlistIcon() {
           <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs font-bold px-2 py-0.5">{wishlistCount}</span>
         )}
       </Link>
+    </div>
+  );
+}
+
+function CartNotification() {
+  const { notification, clearNotification } = useCart();
+  const navigate = useNavigate();
+  const [isVisible, setIsVisible] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+
+  useEffect(() => {
+    if (notification) {
+      setIsVisible(true);
+      setIsExiting(false);
+
+      // Auto-dismiss after 3 seconds
+      const timer = setTimeout(() => {
+        setIsExiting(true);
+        setTimeout(() => {
+          setIsVisible(false);
+          clearNotification();
+        }, 300); // Match animation duration
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [notification, clearNotification]);
+
+  const handleClick = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      clearNotification();
+      navigate('/checkout');
+    }, 200);
+  };
+
+  if (!isVisible || !notification) return null;
+
+  return (
+    <div
+      onClick={handleClick}
+      className={`fixed top-36 right-4 z-40 cursor-pointer transition-all duration-300 transform ${
+        isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'
+      }`}
+    >
+      <div className="bg-monstera-green text-white rounded-xl shadow-2xl p-5 min-w-[320px] border-2 border-monstera-dark hover:bg-monstera-dark transition-colors">
+        <div className="flex items-start gap-4">
+          <div className="bg-white rounded-full p-2.5 flex-shrink-0">
+            <svg className="w-6 h-6 text-monstera-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-base mb-1.5">
+              {notification.count > 1 
+                ? `${notification.count}x ${notification.productName}` 
+                : notification.productName}
+            </p>
+            <p className="text-sm text-monstera-light">
+              Added to cart • Click to view cart
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

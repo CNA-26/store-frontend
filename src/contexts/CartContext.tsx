@@ -9,12 +9,20 @@ export type CartItem = {
 
 type AddItem = { id: string; name: string; price: number };
 
+export type CartNotification = {
+  id: number;
+  productName: string;
+  count: number;
+};
+
 type CartContextShape = {
   cart: CartItem[];
   addToCart: (item: AddItem) => void;
   removeFromCart: (id: string) => void;
   hasInteracted: boolean;
   cartCount: number;
+  notification: CartNotification | null;
+  clearNotification: () => void;
 };
 
 const CartContext = createContext<CartContextShape | undefined>(undefined);
@@ -22,6 +30,8 @@ const CartContext = createContext<CartContextShape | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [notification, setNotification] = useState<CartNotification | null>(null);
+  const [notificationId, setNotificationId] = useState(0);
 
   const addToCart = (item: AddItem) => {
     setCart((prev) => {
@@ -32,6 +42,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return [...prev, { ...item, qty: 1 }];
     });
     setHasInteracted(true);
+    
+    // Create notification
+    setNotificationId((prev) => prev + 1);
+    setNotification((prev) => {
+      if (prev && prev.productName === item.name) {
+        // Increment count if same product
+        return { ...prev, count: prev.count + 1 };
+      }
+      // New notification
+      return { id: notificationId + 1, productName: item.name, count: 1 };
+    });
   };
 
   const removeFromCart = (id: string) => {
@@ -39,10 +60,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setHasInteracted(true);
   };
 
+  const clearNotification = () => {
+    setNotification(null);
+  };
+
   const cartCount = useMemo(() => cart.reduce((s, it) => s + it.qty, 0), [cart]);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, hasInteracted, cartCount }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, hasInteracted, cartCount, notification, clearNotification }}>
       {children}
     </CartContext.Provider>
   );
