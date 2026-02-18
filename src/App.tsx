@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Routes, Route, Link } from "react-router-dom";
 import CheckoutPage from "./pages/CheckoutPage";
 import ProductsPage from "./pages/ProductsPage";
+import WishlistPage from "./pages/WishlistPage";
 import { CartProvider, useCart } from "./contexts/CartContext";
+import { WishlistProvider, useWishlist } from "./contexts/WishlistContext";
 function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const { addToCart } = useCart();
@@ -164,12 +166,16 @@ function HomePage() {
 function App() {
   return (
     <CartProvider>
-      <CartIcon />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/products" element={<ProductsPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-      </Routes>
+      <WishlistProvider>
+        <CartIcon />
+        <WishlistIcon />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/wishlist" element={<WishlistPage />} />
+        </Routes>
+      </WishlistProvider>
     </CartProvider>
   );
 }
@@ -186,6 +192,22 @@ function CartIcon() {
         </svg>
         {cartCount > 0 && (
           <span className="absolute -top-2 -right-2 bg-monstera-lime text-monstera-dark rounded-full text-xs font-bold px-2 py-0.5">{cartCount}</span>
+        )}
+      </Link>
+    </div>
+  );
+}
+
+function WishlistIcon() {
+  const { wishlistCount } = useWishlist();
+  return (
+    <div className="fixed right-4 top-20 z-50">
+      <Link to="/wishlist" className="relative inline-flex items-center p-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light">
+        <svg className="w-6 h-6 text-monstera-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+        {wishlistCount > 0 && (
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs font-bold px-2 py-0.5">{wishlistCount}</span>
         )}
       </Link>
     </div>
