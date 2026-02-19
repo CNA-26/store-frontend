@@ -3,6 +3,7 @@ import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import CheckoutPage from "./pages/CheckoutPage";
 import ProductsPage from "./pages/ProductsPage";
 import WishlistPage from "./pages/WishlistPage";
+import ContactPage from "./pages/ContactPage";
 import { CartProvider, useCart } from "./contexts/CartContext";
 import { WishlistProvider, useWishlist } from "./contexts/WishlistContext";
 function HomePage() {
@@ -61,6 +62,11 @@ function HomePage() {
               <button className="bg-monstera-lime hover:bg-monstera-brown text-monstera-dark hover:text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105">
                 View Collection
               </button>
+              <Link to="/contact">
+                <button className="bg-monstera-dark hover:bg-monstera-green text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105">
+                  Contact Us
+                </button>
+              </Link>
             </div>
           </div>
 
@@ -173,6 +179,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/wishlist" element={<WishlistPage />} />
         </Routes>
