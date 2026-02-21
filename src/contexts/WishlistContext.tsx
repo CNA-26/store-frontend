@@ -89,7 +89,12 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       // Reflect the server-side wishlist state after the move
       if (Array.isArray(data.wishlistNow)) {
-        const remaining = new Set<string>(data.wishlistNow as string[]);
+        // wishlistNow may be product code strings or objects with a productCode field
+        const remaining = new Set<string>(
+          (data.wishlistNow as Array<string | { productCode: string }>).map((item) =>
+            typeof item === "string" ? item : item.productCode
+          )
+        );
         setWishlist((prev) => prev.filter((item) => remaining.has(item.id)));
       }
       return data.moved ?? null;
