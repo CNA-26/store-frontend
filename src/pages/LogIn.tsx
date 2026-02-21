@@ -10,10 +10,29 @@ export default function LogIn() {
         e.preventDefault();
 
         try {
-            // Placeholder for future DB connection
-            console.log("Login attempt:", { email, password });
+            const response = await fetch(
+                "https://user-service-cna-26-user-service.2.rahtiapp.fi/api/auth/login",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                    }),
+                }
+            );
 
-            // TODO: connect to backend when credentials are ready
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Login failed");
+            }
+
+            const data = await response.json();
+
+            // Store JWT
+            localStorage.setItem("token", data.token);
 
             navigate("/");
         } catch (err) {

@@ -10,9 +10,24 @@ export default function Register() {
         e.preventDefault();
 
         try {
-            console.log("Register attempt:", { email, password });
+            const response = await fetch(
+                "https://user-service-cna-26-user-service.2.rahtiapp.fi/api/auth/users",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                    }),
+                }
+            );
 
-            // TODO: connect to backend later
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Registration failed");
+            }
 
             navigate("/login");
         } catch (err) {
