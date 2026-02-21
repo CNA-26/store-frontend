@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function LogIn() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
+    const auth = useAuth();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,11 +33,30 @@ export default function LogIn() {
                 throw new Error(data.error || "Login failed");
             }
 
-            // Save token
-            localStorage.setItem("token", data.token);
+            // If the backend returns user/token in body, use it. Otherwise try to fetch /api/auth/me
+            const base = "https://user-service-cna-26-user-service.2.rahtiapp.fi";
+            let user = data.user || data;
 
-            // Save user info
-            localStorage.setItem("user", JSON.stringify(data.user));
+            if (!user) {
+                try {
+                    const meRes = await fetch(`${base}/api/auth/me`, { credentials: "include" });
+                    if (meRes.ok) {
+                        const meData = await meRes.json();
+                        user = meData.user || meData;
+                    }
+                } catch (err) {
+                    // ignore
+                }
+            }
+
+            // Persist token if present in response body
+            if (data.token) {
+                try { localStorage.setItem("token", data.token); } catch {}
+            }
+
+            if (user) {
+                auth.login(user, data.token);
+            }
 
             navigate("/", { replace: true });
         } catch (error) {

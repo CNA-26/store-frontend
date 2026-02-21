@@ -8,6 +8,8 @@ import { CartProvider, useCart } from "./contexts/CartContext";
 import { WishlistProvider, useWishlist } from "./contexts/WishlistContext";
 import LogIn from "./pages/LogIn";
 import Register from "./pages/Register";
+import Profile from "./pages/Profile";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -174,82 +176,105 @@ function HomePage() {
 
 function App() {
   return (
-    <CartProvider>
-      <WishlistProvider>
-        <CartIcon />
-        <WishlistIcon />
-        <LoginIcon />
-        <CartNotification />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/wishlist" element={<WishlistPage />} />
-          <Route path="/login" element={<LogIn />} />
-          <Route path="/register" element={<Register />} />
-        </Routes>
-      </WishlistProvider>
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <FloatingActions />
+          <CartNotification />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/products" element={<ProductsPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+            <Route path="/login" element={<LogIn />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/profile" element={<Profile />} />
+          </Routes>
+        </WishlistProvider>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 
-function CartIcon() {
+function FloatingActions() {
   const { cartCount } = useCart();
+  const { wishlistCount } = useWishlist();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const initials = (() => {
+    if (!user) return "";
+    const name = user.name || user.fullName || user.firstName || "";
+    return name
+      .split(" ")
+      .map((s: string) => s[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+  })();
+
   return (
-    <div className="fixed right-4 top-4 z-50">
-      <Link to="/checkout" className="relative inline-flex items-center p-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light">
+    <div className="fixed right-4 top-4 z-50 flex flex-col items-end gap-4">
+      <Link
+        to="/checkout"
+        className="relative flex items-center gap-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light px-4 py-2 transition"
+      >
         <svg className="w-6 h-6 text-monstera-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4" />
           <circle cx="10" cy="20" r="1" />
           <circle cx="18" cy="20" r="1" />
         </svg>
+        <span className="hidden sm:inline text-monstera-dark font-semibold">Cart</span>
         {cartCount > 0 && (
           <span className="absolute -top-2 -right-2 bg-monstera-lime text-monstera-dark rounded-full text-xs font-bold px-2 py-0.5">{cartCount}</span>
         )}
       </Link>
-    </div>
-  );
-}
 
-function WishlistIcon() {
-  const { wishlistCount } = useWishlist();
-  return (
-    <div className="fixed right-4 top-20 z-50">
-      <Link to="/wishlist" className="relative inline-flex items-center p-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light">
+      <Link
+        to="/wishlist"
+        className="relative flex items-center gap-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light px-4 py-2 transition"
+      >
         <svg className="w-6 h-6 text-monstera-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
+        <span className="hidden sm:inline text-monstera-dark font-semibold">Wishlist</span>
         {wishlistCount > 0 && (
           <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs font-bold px-2 py-0.5">{wishlistCount}</span>
         )}
       </Link>
-    </div>
-  );
-}
 
-function LoginIcon() {
-  return (
-    <div className="fixed right-4 top-36 z-50">
-      <Link
-        to="/login"
-        className="relative inline-flex items-center p-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light transition"
-      >
-        <svg
-          className="w-6 h-6 text-monstera-dark"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      {user ? (
+        <div className="relative">
+          <Link
+            to="/profile"
+            className="flex items-center gap-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light px-4 py-2 transition"
+          >
+            <div className="w-8 h-8 rounded-full bg-monstera-lime text-monstera-dark flex items-center justify-center font-bold">{initials || 'ME'}</div>
+            <span className="hidden sm:inline text-monstera-dark font-semibold">Profile</span>
+          </Link>
+          <button
+            onClick={() => {
+              logout();
+              navigate("/");
+            }}
+            className="absolute -right-24 top-1/2 -translate-y-1/2 bg-red-500 text-white text-sm px-3 py-1 rounded-full shadow-md hidden sm:inline"
+            title="Log out"
+          >
+            Log out
+          </button>
+        </div>
+      ) : (
+        <Link
+          to="/login"
+          className="flex items-center gap-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light px-4 py-2 transition"
         >
-          {/* Avatar icon */}
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5.121 17.804A9 9 0 1118.879 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
-      </Link>
+          <svg className="w-6 h-6 text-monstera-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A9 9 0 1118.879 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="hidden sm:inline text-monstera-dark font-semibold">Log in</span>
+        </Link>
+      )}
     </div>
   );
 }
