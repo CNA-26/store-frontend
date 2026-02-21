@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 export default function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [name, setName] = useState("");
     const navigate = useNavigate();
 
     const handleRegister = async (e: React.FormEvent) => {
@@ -18,20 +19,26 @@ export default function Register() {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
+                        name,
                         email,
                         password,
                     }),
                 }
             );
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || "Registration failed");
+                console.error("Register backend error:", data);
+                throw new Error(data.error || "Registration failed");
             }
 
-            navigate("/login");
-        } catch (err) {
-            console.error("Registration failed", err);
+            alert("Account created successfully 🌿");
+
+            navigate("/login", { replace: true });
+        } catch (error) {
+            console.error("Register failed:", error);
+            alert("Registration failed. Check console.");
         }
     };
 
@@ -63,6 +70,19 @@ export default function Register() {
                 </h2>
 
                 <form onSubmit={handleRegister} className="space-y-6">
+                    <div>
+                        <label className="block text-monstera-dark font-semibold mb-2">
+                            Name
+                        </label>
+                        <input
+                            type="text"
+                            required
+                            className="w-full px-4 py-3 rounded-full border-2 border-monstera-green focus:outline-none focus:border-monstera-dark"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                        />
+                    </div>
+
                     <div>
                         <label className="block text-monstera-dark font-semibold mb-2">
                             Email

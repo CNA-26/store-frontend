@@ -24,19 +24,23 @@ export default function LogIn() {
                 }
             );
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || "Login failed");
-            }
-
             const data = await response.json();
 
-            // Store JWT
+            if (!response.ok) {
+                console.error("Backend error:", data);
+                throw new Error(data.error || "Login failed");
+            }
+
+            // Save token
             localStorage.setItem("token", data.token);
 
-            navigate("/");
-        } catch (err) {
-            console.error("Login failed", err);
+            // Save user info
+            localStorage.setItem("user", JSON.stringify(data.user));
+
+            navigate("/", { replace: true });
+        } catch (error) {
+            console.error("Login failed:", error);
+            alert("Login failed. Check console for details.");
         }
     };
 
