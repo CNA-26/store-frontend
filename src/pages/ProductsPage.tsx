@@ -10,10 +10,11 @@ type Product = {
   image?: string;
 };
 
+// Product IDs match the wishlist API product codes so wishlisting syncs correctly
 const products: Product[] = [
-  { id: "1", name: "Monstera Deliciosa", price: 29.99 },
-  { id: "2", name: "Succulent Mix", price: 19.99 },
-  { id: "3", name: "Fiddle Leaf Fig", price: 39.99 },
+  { id: "P001", name: "Monstera", price: 25, image: "https://placehold.co/500x500?text=Monstera" },
+  { id: "P002", name: "Alocasia", price: 59, image: "https://placehold.co/500x500?text=Alocasia" },
+  { id: "P003", name: "Strelitzia", price: 139, image: "https://placehold.co/500x500?text=Strelitzia" },
   { id: "4", name: "Snake Plant", price: 24.99 },
 ];
 
@@ -25,7 +26,7 @@ export default function ProductPage() {
     if (isInWishlist(product.id)) {
       removeFromWishlist(product.id);
     } else {
-      addToWishlist({ id: product.id, name: product.name, price: product.price });
+      addToWishlist({ id: product.id, name: product.name, price: product.price, image: product.image });
     }
   };
 
@@ -109,10 +110,12 @@ function ProductCard({
         </svg>
       </button>
 
-      <div className="h-40 rounded-xl bg-monstera-light flex items-center justify-center mb-4">
-        <span className="text-monstera-brown text-sm">
-          Image placeholder
-        </span>
+      <div className="h-40 rounded-xl bg-monstera-light flex items-center justify-center mb-4 overflow-hidden">
+        {product.image ? (
+          <img src={product.image} alt={product.name} className="h-full w-full object-cover rounded-xl" />
+        ) : (
+          <span className="text-monstera-brown text-sm">Image placeholder</span>
+        )}
       </div>
 
       <h3 className="font-bold text-xl text-monstera-dark">
