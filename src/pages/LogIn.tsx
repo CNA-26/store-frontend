@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { jwtDecode } from "jwt-decode";
 
 export default function LogIn() {
     const [email, setEmail] = useState("");
@@ -16,13 +17,8 @@ export default function LogIn() {
                 "https://user-service-cna-26-user-service.2.rahtiapp.fi/api/auth/login",
                 {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        email,
-                        password,
-                    }),
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password }),
                 }
             );
 
@@ -30,33 +26,35 @@ export default function LogIn() {
 
             if (!response.ok) {
                 console.error("Backend error:", data);
-                throw new Error(data.error || "Login failed");
+                alert(data.error || data.message || "Login failed");
+                return;
             }
 
-            // If the backend returns user/token in body, use it. Otherwise try to fetch /api/auth/me
-            const base = "https://user-service-cna-26-user-service.2.rahtiapp.fi";
-            let user = data.user || data;
-
-            if (!user) {
-                try {
-                    const meRes = await fetch(`${base}/api/auth/me`, { credentials: "include" });
-                    if (meRes.ok) {
-                        const meData = await meRes.json();
-                        user = meData.user || meData;
-                    }
-                } catch (err) {
-                    // ignore
-                }
+            if (!data.accessToken) {
+                console.error("Backend returned:", data);
+                alert("No access token returned from server");
+                return;
             }
 
-            // Persist token if present in response body
-            if (data.token) {
-                try { localStorage.setItem("token", data.token); } catch {}
+            localStorage.setItem("accessToken", data.accessToken);
+            if (data.refreshToken) {
+                localStorage.setItem("refreshToken", data.refreshToken);
             }
 
-            if (user) {
-                auth.login(user, data.token);
-            }
+            const decoded: any = jwtDecode(data.accessToken);
+
+            const user = {
+                id: decoded.sub,
+                email: decoded.email,
+                role: decoded.role,
+                name: decoded.email?.split("@")[0] || "User",
+            };
+
+            localStorage.setItem("user", JSON.stringify(user));
+            localStorage.setItem("email", user.email);
+            localStorage.setItem("name", user.name);
+
+            auth.login(user, data.accessToken);
 
             navigate("/", { replace: true });
         } catch (error) {

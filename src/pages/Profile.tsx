@@ -5,6 +5,9 @@ import { useWishlist } from "../contexts/WishlistContext";
 
 export default function Profile() {
   const { user, logout, login } = useAuth();
+  const storedUser = localStorage.getItem("user");
+  const parsedStoredUser = storedUser ? JSON.parse(storedUser) : null;
+  const activeUser = user || parsedStoredUser;
   const { wishlist } = useWishlist();
   const [orders, setOrders] = useState<any[]>([]);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -79,7 +82,7 @@ export default function Profile() {
 
   if (!profileLoaded) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
 
-  if (!user) {
+  if (!activeUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -104,7 +107,7 @@ export default function Profile() {
             {typeof window !== 'undefined' && console.debug && (console.debug('profile user:', user), null)}
 
             {(() => {
-              const u: any = user;
+              const u: any = activeUser;
 
               const extractEmail = (u: any) => {
                 return (
