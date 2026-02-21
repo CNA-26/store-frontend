@@ -6,6 +6,9 @@ import WishlistPage from "./pages/WishlistPage";
 import ContactPage from "./pages/ContactPage";
 import { CartProvider, useCart } from "./contexts/CartContext";
 import { WishlistProvider, useWishlist } from "./contexts/WishlistContext";
+import LogIn from "./pages/LogIn";
+import Register from "./pages/Register";
+
 function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const { addToCart } = useCart();
@@ -50,7 +53,7 @@ function HomePage() {
               Your Green Paradise
             </h2>
             <p className="text-xl text-monstera-brown mb-8 leading-relaxed">
-              Discover beautiful houseplants and everything you need to create your perfect indoor jungle. 
+              Discover beautiful houseplants and everything you need to create your perfect indoor jungle.
               From rare monsteras to easy-care succulents.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
@@ -100,9 +103,9 @@ function HomePage() {
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
               <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition duration-300 transform hover:scale-105">
-                <img 
-                  src="https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&h=400&fit=crop" 
-                  alt="Monstera Deliciosa" 
+                <img
+                  src="https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&h=400&fit=crop"
+                  alt="Monstera Deliciosa"
                   className="h-48 w-full object-cover"
                 />
                 <div className="p-6">
@@ -118,9 +121,9 @@ function HomePage() {
               </div>
 
               <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition duration-300 transform hover:scale-105">
-                <img 
-                  src="https://images.unsplash.com/photo-1509937528035-ad76254b0356?w=800&h=400&fit=crop" 
-                  alt="Succulent Mix" 
+                <img
+                  src="https://images.unsplash.com/photo-1509937528035-ad76254b0356?w=800&h=400&fit=crop"
+                  alt="Succulent Mix"
                   className="h-48 w-full object-cover"
                 />
                 <div className="p-6">
@@ -136,9 +139,9 @@ function HomePage() {
               </div>
 
               <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition duration-300 transform hover:scale-105">
-                <img 
-                  src="https://images.unsplash.com/photo-1593482892290-f54927ae1bb8?w=800&h=400&fit=crop" 
-                  alt="Pothos Marble" 
+                <img
+                  src="https://images.unsplash.com/photo-1593482892290-f54927ae1bb8?w=800&h=400&fit=crop"
+                  alt="Pothos Marble"
                   className="h-48 w-full object-cover"
                 />
                 <div className="p-6">
@@ -160,7 +163,7 @@ function HomePage() {
       <footer className="bg-monstera-dark text-monstera-light py-8 mt-16">
         <div className="container mx-auto px-4 text-center">
           <p className="text-lg">
-            &copy; 2026 Monstera Plant Shop. Grow your indoor jungle with us! 
+            &copy; 2026 Monstera Plant Shop. Grow your indoor jungle with us!
           </p>
         </div>
       </footer>
@@ -175,6 +178,7 @@ function App() {
       <WishlistProvider>
         <CartIcon />
         <WishlistIcon />
+        <LoginIcon />
         <CartNotification />
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -182,6 +186,8 @@ function App() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/wishlist" element={<WishlistPage />} />
+          <Route path="/login" element={<LogIn />} />
+          <Route path="/register" element={<Register />} />
         </Routes>
       </WishlistProvider>
     </CartProvider>
@@ -217,6 +223,32 @@ function WishlistIcon() {
         {wishlistCount > 0 && (
           <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs font-bold px-2 py-0.5">{wishlistCount}</span>
         )}
+      </Link>
+    </div>
+  );
+}
+
+function LoginIcon() {
+  return (
+    <div className="fixed right-4 top-36 z-50">
+      <Link
+        to="/login"
+        className="relative inline-flex items-center p-3 bg-white rounded-full shadow-lg border-2 border-monstera-green hover:bg-monstera-light transition"
+      >
+        <svg
+          className="w-6 h-6 text-monstera-dark"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          {/* Avatar icon */}
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5.121 17.804A9 9 0 1118.879 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+        </svg>
       </Link>
     </div>
   );
@@ -260,9 +292,8 @@ function CartNotification() {
   return (
     <div
       onClick={handleClick}
-      className={`fixed top-36 right-4 z-40 cursor-pointer transition-all duration-300 transform ${
-        isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'
-      }`}
+      className={`fixed top-36 right-4 z-40 cursor-pointer transition-all duration-300 transform ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'
+        }`}
     >
       <div className="bg-monstera-green text-white rounded-xl shadow-2xl p-5 min-w-[320px] border-2 border-monstera-dark hover:bg-monstera-dark transition-colors">
         <div className="flex items-start gap-4">
@@ -273,8 +304,8 @@ function CartNotification() {
           </div>
           <div className="flex-1">
             <p className="font-bold text-base mb-1.5">
-              {notification.count > 1 
-                ? `${notification.count}x ${notification.productName}` 
+              {notification.count > 1
+                ? `${notification.count}x ${notification.productName}`
                 : notification.productName}
             </p>
             <p className="text-sm text-monstera-light">
