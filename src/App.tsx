@@ -181,6 +181,7 @@ function App() {
         <WishlistProvider>
           <FloatingActions />
           <CartNotification />
+          <WishlistLoginToast />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/products" element={<ProductsPage />} />
@@ -336,6 +337,62 @@ function CartNotification() {
             <p className="text-sm text-monstera-light">
               Added to cart • Click to view cart
             </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WishlistLoginToast() {
+  const { loginToast, clearLoginToast } = useWishlist();
+  const navigate = useNavigate();
+  const [isVisible, setIsVisible] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
+
+  useEffect(() => {
+    if (loginToast) {
+      setIsVisible(true);
+      setIsExiting(false);
+
+      const timer = setTimeout(() => {
+        setIsExiting(true);
+        setTimeout(() => {
+          setIsVisible(false);
+          clearLoginToast();
+        }, 300);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [loginToast, clearLoginToast]);
+
+  const handleClick = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      clearLoginToast();
+      navigate('/login');
+    }, 200);
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <div
+      onClick={handleClick}
+      className={`fixed top-52 right-4 z-40 cursor-pointer transition-all duration-300 transform ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}`}
+    >
+      <div className="bg-monstera-brown text-white rounded-xl shadow-2xl p-5 min-w-[320px] border-2 border-monstera-dark hover:bg-monstera-dark transition-colors">
+        <div className="flex items-start gap-4">
+          <div className="bg-white rounded-full p-2.5 flex-shrink-0">
+            <svg className="w-6 h-6 text-monstera-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-base mb-1.5">Log in to use wishlist</p>
+            <p className="text-sm text-monstera-light">Click here to log in and save products to your wishlist.</p>
           </div>
         </div>
       </div>

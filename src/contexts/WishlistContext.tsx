@@ -18,6 +18,8 @@ type WishlistContextShape = {
   wishlistCount: number;
   moveToCart: (productCode: string, quantity?: number) => Promise<{ productCode: string; quantity: number } | null>;
   loading: boolean;
+  loginToast: boolean;
+  clearLoginToast: () => void;
 };
 
 const WishlistContext = createContext<WishlistContextShape | undefined>(undefined);
@@ -26,6 +28,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loginToast, setLoginToast] = useState(false);
 
   const userId: string | null = user?.id || user?.userId || user?._id || user?.email || null;
 
@@ -54,19 +57,22 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, [userId]);
 
   const addToWishlist = (item: WishlistItem) => {
+    // Block wishlisting for unauthenticated users and prompt them to log in
+    if (!userId) {
+      setLoginToast(true);
+      return;
+    }
     // Optimistic update – skip if already in list
     setWishlist((prev) => {
       if (prev.find((p) => p.id === item.id)) return prev;
       return [...prev, item];
     });
-    // Sync to API when user is logged in and item has a valid product code
-    if (userId && item.id) {
-      fetch(`${WISHLIST_API}/wishlist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, productCode: item.id }),
-      }).catch(() => {});
-    }
+    // Sync to API (userId is guaranteed non-null here due to early return above)
+    fetch(`${WISHLIST_API}/wishlist`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, productCode: item.id }),
+    }).catch(() => {});
   };
 
   const removeFromWishlist = (id: string) => {
@@ -103,11 +109,13 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const clearLoginToast = () => setLoginToast(false);
+
   const wishlistCount = wishlist.length;
 
   return (
     <WishlistContext.Provider
-      value={{ wishlist, addToWishlist, removeFromWishlist, isInWishlist, wishlistCount, moveToCart, loading }}
+      value={{ wishlist, addToWishlist, removeFromWishlist, isInWishlist, wishlistCount, moveToCart, loading, loginToast, clearLoginToast }}
     >
       {children}
     </WishlistContext.Provider>
