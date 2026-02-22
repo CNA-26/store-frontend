@@ -37,7 +37,7 @@ export default function Profile() {
           const tryEndpoints = async (endpoints: string[]) => {
             for (const url of endpoints) {
               try {
-                const or = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
+                const or = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
                 if (or.ok) {
                   const ordersData = await or.json();
                   return Array.isArray(ordersData) ? ordersData : ordersData.orders || [];

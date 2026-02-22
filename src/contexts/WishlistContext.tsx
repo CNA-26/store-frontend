@@ -38,8 +38,13 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       setWishlist([]);
       return;
     }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setWishlist([]);
+      return;
+    }
     setLoading(true);
-    fetch(`${WISHLIST_API}/wishlist/${userId}`)
+    fetch(`${WISHLIST_API}/wishlist/${userId}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.products) {
