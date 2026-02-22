@@ -55,11 +55,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (token) {
           res = await fetch(`${base}/api/auth/me`, {
             headers: { Authorization: `Bearer ${token}` },
-            credentials: "include",
           });
         } else {
           // attempt cookie-based session
-          res = await fetch(`${base}/api/auth/me`, { credentials: "include" });
+          res = await fetch(`${base}/api/auth/me`);
         }
 
         if (!res || !res.ok) return;
