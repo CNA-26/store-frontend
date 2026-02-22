@@ -30,31 +30,38 @@ export default function LogIn() {
                 return;
             }
 
-            if (!data.accessToken) {
+            const accessToken = data.token || data.accessToken;
+
+            if (!accessToken) {
                 console.error("Backend returned:", data);
                 alert("No access token returned from server");
                 return;
             }
 
-            localStorage.setItem("accessToken", data.accessToken);
+            localStorage.setItem("token", accessToken);
+            localStorage.setItem("accessToken", accessToken);
             if (data.refreshToken) {
                 localStorage.setItem("refreshToken", data.refreshToken);
             }
 
-            const decoded: any = jwtDecode(data.accessToken);
+            const userFromApi = data.user;
+            let user = userFromApi;
 
-            const user = {
-                id: decoded.sub,
-                email: decoded.email,
-                role: decoded.role,
-                name: decoded.email?.split("@")[0] || "User",
-            };
+            if (!user) {
+                const decoded: any = jwtDecode(accessToken);
+                user = {
+                    id: decoded.sub,
+                    email: decoded.email,
+                    role: decoded.role,
+                    name: decoded.email?.split("@")[0] || "User",
+                };
+            }
 
             localStorage.setItem("user", JSON.stringify(user));
             localStorage.setItem("email", user.email);
             localStorage.setItem("name", user.name);
 
-            auth.login(user, data.accessToken);
+            auth.login(user, accessToken);
 
             navigate("/", { replace: true });
         } catch (error) {

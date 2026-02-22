@@ -29,6 +29,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loginToast, setLoginToast] = useState(false);
+  const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   const userId: string | null = user?.id || user?.userId || user?._id || user?.email || null;
 
@@ -39,7 +41,9 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setLoading(true);
-    fetch(`${WISHLIST_API}/wishlist/${userId}`)
+    fetch(`${WISHLIST_API}/wishlist/${userId}`, {
+      headers: authHeaders,
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.products) {
@@ -70,7 +74,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     // Sync to API (userId is guaranteed non-null here due to early return above)
     fetch(`${WISHLIST_API}/wishlist`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({ userId, productCode: item.id }),
     }).catch(() => {});
   };
@@ -88,7 +92,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch(`${WISHLIST_API}/wishlist/${userId}/move-to-cart`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({ productCode, quantity }),
       });
       if (!res.ok) return null;

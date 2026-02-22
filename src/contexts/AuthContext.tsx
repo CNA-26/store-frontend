@@ -40,43 +40,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
-  // Try to fetch profile when we don't have a stored user.
-  // This supports both token-in-localStorage and cookie-based sessions (credentials: 'include').
   useEffect(() => {
-    const tryFetchProfile = async () => {
-      try {
-        const stored = localStorage.getItem("user");
-        if (stored) return; // already have user
-
-        const token = localStorage.getItem("token");
-        const base = "https://user-service-cna-26-user-service.2.rahtiapp.fi";
-
-        let res: Response | undefined;
-        if (token) {
-          res = await fetch(`${base}/api/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-            credentials: "include",
-          });
-        } else {
-          // attempt cookie-based session
-          res = await fetch(`${base}/api/auth/me`, { credentials: "include" });
-        }
-
-        if (!res || !res.ok) return;
-        const data = await res.json();
-        const fetched = data.user || data;
-        if (fetched) {
-          setUser(fetched);
-          try {
-            localStorage.setItem("user", JSON.stringify(fetched));
-          } catch {}
-        }
-      } catch {
-        // ignore errors
-      }
-    };
-
-    tryFetchProfile();
+    try {
+      const stored = localStorage.getItem("user");
+      if (!stored) return;
+      setUser(JSON.parse(stored));
+    } catch {}
   }, []);
 
   return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
