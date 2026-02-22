@@ -13,7 +13,7 @@ type Product = {
 };
 
 // Product IDs match the wishlist API product codes so wishlisting syncs correctly
-const products: Product[] = [
+const staticProducts: Product[] = [
   { id: "P001", name: "Monstera", price: 25, image: "https://placehold.co/500x500?text=Monstera" },
   { id: "P002", name: "Alocasia", price: 59, image: "https://placehold.co/500x500?text=Alocasia" },
   { id: "P003", name: "Strelitzia", price: 139, image: "https://placehold.co/500x500?text=Strelitzia" },
