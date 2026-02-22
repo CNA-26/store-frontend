@@ -56,7 +56,7 @@ export default function ProductPage() {
                 image = undefined;
               }
               return {
-                id: String(p.id ?? p.product_code ?? `p-${Math.random().toString(36).slice(2, 7)}`),
+                id: String(p.product_code ?? p.id ?? `p-${Math.random().toString(36).slice(2, 7)}`),
                 name: p.product_name ?? p.name ?? String(p.id ?? "Unnamed"),
                 price: Number(p.price ?? 0),
                 image,
@@ -83,10 +83,11 @@ export default function ProductPage() {
   }, [API_BASE]);
 
   const handleToggleWishlist = (product: Product) => {
-    if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id);
+    const wishlistId = product.code ?? product.id;
+    if (isInWishlist(wishlistId)) {
+      removeFromWishlist(wishlistId);
     } else {
-      addToWishlist({ id: product.id, name: product.name, price: product.price, image: product.image });
+      addToWishlist({ id: wishlistId, name: product.name, price: product.price, image: product.image });
     }
   };
 
@@ -128,7 +129,7 @@ export default function ProductPage() {
                   product={product}
                   onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
                   onToggleWishlist={() => handleToggleWishlist(product)}
-                  isInWishlist={isInWishlist(product.id)}
+                  isInWishlist={isInWishlist(product.code ?? product.id)}
                 />
               ))}
             </div>

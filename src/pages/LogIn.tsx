@@ -30,7 +30,7 @@ export default function LogIn() {
                 return;
             }
 
-            const accessToken = data.token || data.accessToken;
+            const accessToken = data.token || data.accessToken || data.access_token;
 
             if (!accessToken) {
                 console.error("Backend returned:", data);
@@ -40,8 +40,9 @@ export default function LogIn() {
 
             localStorage.setItem("token", accessToken);
             localStorage.setItem("accessToken", accessToken);
-            if (data.refreshToken) {
-                localStorage.setItem("refreshToken", data.refreshToken);
+            const refreshToken = data.refreshToken || data.refresh_token;
+            if (refreshToken) {
+                localStorage.setItem("refreshToken", refreshToken);
             }
 
             const userFromApi = data.user;
