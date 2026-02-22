@@ -1,13 +1,15 @@
-// no local react hooks needed
 import { Link } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useWishlist } from "../contexts/WishlistContext";
+import { useEffect, useState } from "react";
 
 type Product = {
   id: string;
   name: string;
   price: number;
   image?: string;
+  description?: string;
+  code?: string;
 };
 
 // Product IDs match the wishlist API product codes so wishlisting syncs correctly
@@ -21,6 +23,64 @@ const products: Product[] = [
 export default function ProductPage() {
   const { addToCart, cartCount } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+
+  const [products, setProducts] = useState<Product[]>(staticProducts);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const API_BASE = (import.meta.env.VITE_API_BASE as string) || "https://product-service-products-service.2.rahtiapp.fi";
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const url = `${API_BASE.replace(/\/$/, "")}/products`;
+        console.log("Fetching:", url);
+                const res = await fetch(url);
+        if (!res.ok) throw new Error(`Status ${res.status} ${res.statusText}`);
+        const data = await res.json();
+        const list: Product[] = Array.isArray(data)
+          ? data.map((p: any) => {
+              let image: string | undefined;
+              try {
+                if (p.img) {
+                  if (/^https?:\/\//.test(p.img)) {
+                    image = p.img;
+                  } else {
+                    image = `${new URL(API_BASE).origin}/images/${p.img}`;
+                  }
+                }
+              } catch {
+                image = undefined;
+              }
+              return {
+                id: String(p.id ?? p.product_code ?? `p-${Math.random().toString(36).slice(2, 7)}`),
+                name: p.product_name ?? p.name ?? String(p.id ?? "Unnamed"),
+                price: Number(p.price ?? 0),
+                image,
+                description: p.description_text ?? p.description,
+                code: p.product_code ?? undefined,
+              } as Product;
+            })
+          : [];
+        if (mounted) setProducts(list.length ? list : staticProducts);
+      } catch (e: any) {
+        console.error("Products fetch failed:", e);
+        if (mounted) {
+          setError(`Failed to load products — ${e?.message ?? "unknown error"}`);
+          setProducts(staticProducts);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchProducts();
+    return () => {
+      mounted = false;
+    };
+  }, [API_BASE]);
 
   const handleToggleWishlist = (product: Product) => {
     if (isInWishlist(product.id)) {
@@ -52,25 +112,28 @@ export default function ProductPage() {
 
       <main className="container mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold text-monstera-dark">
-            Our plants
-          </h2>
-          <div className="text-monstera-dark font-bold">
-            Cart: {cartCount}
-          </div>
+          <h2 className="text-3xl font-bold text-monstera-dark">Our plants</h2>
+          <div className="text-monstera-dark font-bold">Cart: {cartCount}</div>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
-              onToggleWishlist={() => handleToggleWishlist(product)}
-              isInWishlist={isInWishlist(product.id)}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-20">Loading products…</div>
+        ) : (
+          <>
+            {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
+                  onToggleWishlist={() => handleToggleWishlist(product)}
+                  isInWishlist={isInWishlist(product.id)}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </main>
     </div>
   );
@@ -89,7 +152,6 @@ function ProductCard({
 }) {
   return (
     <div className="bg-white rounded-2xl shadow-xl border-4 border-monstera-green p-5 flex flex-col relative">
-      {/* Wishlist button */}
       <button
         type="button"
         onClick={onToggleWishlist}
@@ -101,12 +163,7 @@ function ProductCard({
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
       </button>
 
@@ -118,13 +175,11 @@ function ProductCard({
         )}
       </div>
 
-      <h3 className="font-bold text-xl text-monstera-dark">
-        {product.name}
-      </h3>
+      <h3 className="font-bold text-xl text-monstera-dark">{product.name}</h3>
 
-      <p className="mt-1 font-bold text-monstera-green">
-        {eur(product.price)}
-      </p>
+      <p className="mt-1 font-bold text-monstera-green">{eur(product.price)}</p>
+
+      <p className="text-monstera-brown text-sm mt-2 line-clamp-2">{product.description}</p>
 
       <button
         type="button"
