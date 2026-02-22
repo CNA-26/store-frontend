@@ -30,6 +30,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [loginToast, setLoginToast] = useState(false);
   const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+  const PRODUCT_API = (import.meta.env.VITE_API_BASE as string) || "https://product-service-products-service.2.rahtiapp.fi";
   const logWishlistRequest = (label: string, details: Record<string, unknown>) => {
     console.debug(`[wishlist] ${label}`, details);
   };
@@ -70,6 +71,14 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       return text;
     }
   };
+  const parsePrice = (value: unknown) => {
+    if (typeof value === "number") return Number.isFinite(value) ? value : null;
+    if (typeof value === "string") {
+      const parsed = Number(value.replace(/[^\d.,-]/g, "").replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
 
   const userId: string | null = user?.id || user?.userId || user?._id || user?.email || null;
 
@@ -101,14 +110,62 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         });
         return r.ok ? r.json() : null;
       })
-      .then((data) => {
+      .then(async (data) => {
         if (data?.products) {
-          const items: WishlistItem[] = data.products.map((p: { productCode: string; name: string; pris: number; image?: string }) => ({
-            id: p.productCode,
-            name: p.name,
-            price: p.pris, // API uses 'pris' (Swedish for price)
-            image: p.image,
-          }));
+          const rawProducts: any[] = Array.isArray(data.products) ? data.products : [];
+          const items: WishlistItem[] = rawProducts.map((p: any) => {
+            const codeFromPrimitive = typeof p === "string" || typeof p === "number" ? String(p) : null;
+            const code = String(
+              codeFromPrimitive ?? p?.productCode ?? p?.product_code ?? p?.code ?? p?.id ?? ""
+            );
+            const price = parsePrice(p?.pris ?? p?.price ?? p?.product_price);
+            return {
+              id: code,
+              name: p?.name ?? p?.product_name ?? p?.title ?? "",
+              price: price ?? 0,
+              image: p?.image ?? p?.img,
+            };
+          });
+
+          const needsEnrichment = items.some((it) => !it.name || !(Number.isFinite(it.price) && it.price > 0));
+          if (needsEnrichment) {
+            try {
+              const productRes = await fetch(`${PRODUCT_API.replace(/\/$/, "")}/products`);
+              if (productRes.ok) {
+                const productData = await productRes.json();
+                const catalog: any[] = Array.isArray(productData) ? productData : [];
+                const findMatch = (code: string) =>
+                  catalog.find((p) => String(p?.product_code ?? "") === code) ||
+                  catalog.find((p) => String(p?.id ?? "") === code);
+
+                for (const item of items) {
+                  if (!item.id) continue;
+                  const matched = findMatch(item.id);
+                  if (!matched) continue;
+                  if (!item.name) item.name = matched.product_name ?? matched.name ?? item.name;
+                  if (!(Number.isFinite(item.price) && item.price > 0)) {
+                    const matchedPrice = parsePrice(matched.price ?? matched.pris ?? matched.product_price);
+                    if (matchedPrice !== null) item.price = matchedPrice;
+                  }
+                  if (!item.image) {
+                    const img = matched.img ?? matched.image;
+                    if (img) {
+                      item.image = /^https?:\/\//.test(String(img))
+                        ? String(img)
+                        : `${new URL(PRODUCT_API).origin}/images/${img}`;
+                    }
+                  }
+                }
+              }
+            } catch {
+              logWishlistRequest("error", { action: "enrichWishlistProducts", message: "failed to fetch product catalog" });
+            }
+          }
+
+          for (const item of items) {
+            if (!item.name) item.name = item.id || "Unknown product";
+            if (!Number.isFinite(item.price)) item.price = 0;
+          }
           setWishlist(items);
         }
       })
