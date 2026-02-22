@@ -5,6 +5,9 @@ import { useWishlist } from "../contexts/WishlistContext";
 
 export default function Profile() {
   const { user, logout, login } = useAuth();
+  const storedUser = localStorage.getItem("user");
+  const parsedStoredUser = storedUser ? JSON.parse(storedUser) : null;
+  const activeUser = user || parsedStoredUser;
   const { wishlist } = useWishlist();
   const [orders, setOrders] = useState<any[]>([]);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -12,74 +15,29 @@ export default function Profile() {
 
   useEffect(() => {
     const fetchProfileAndOrders = async () => {
-      const token = localStorage.getItem("token");
-      const base = "https://user-service-cna-26-user-service.2.rahtiapp.fi";
+      const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
 
-      if (token) {
-        try {
-          let fetchedUser: any = null;
-          // fetch profile
-          const res = await fetch(`${base}/api/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const data = await res.json();
-            fetchedUser = data.user || data;
-            if (fetchedUser) {
-              login(fetchedUser, token);
-            }
-          }
-
-          // try to fetch orders from a set of likely endpoints (stop on first success)
-          const tryEndpoints = async (endpoints: string[]) => {
-            for (const url of endpoints) {
-              try {
-                const or = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
-                if (or.ok) {
-                  const ordersData = await or.json();
-                  return Array.isArray(ordersData) ? ordersData : ordersData.orders || [];
-                }
-              } catch (e) {
-                // ignore and try next
-              }
-            }
-            return null;
-          };
-
-          const endpoints = [] as string[];
-          endpoints.push(`${base}/api/orders`);
-          endpoints.push(`${base}/api/orders/me`);
-          if (fetchedUser && (fetchedUser.id || fetchedUser._id)) {
-            const id = fetchedUser.id || fetchedUser._id;
-            endpoints.push(`${base}/api/users/${id}/orders`);
-            endpoints.push(`${base}/api/users/${id}/orders?expand=true`);
-          }
-
-          const found = await tryEndpoints(endpoints);
-          if (found) {
-            setOrders(found);
-          } else {
-            const raw = localStorage.getItem("orders");
-            setOrders(raw ? JSON.parse(raw) : []);
-          }
-        } catch {
-          const raw = localStorage.getItem("orders");
-          setOrders(raw ? JSON.parse(raw) : []);
+      if (!activeUser) {
+        const rawUser = localStorage.getItem("user");
+        if (rawUser) {
+          try {
+            login(JSON.parse(rawUser), token || undefined);
+          } catch {}
         }
-      } else {
-        const raw = localStorage.getItem("orders");
-        setOrders(raw ? JSON.parse(raw) : []);
       }
+
+      const raw = localStorage.getItem("orders");
+      setOrders(raw ? JSON.parse(raw) : []);
 
       setProfileLoaded(true);
     };
 
     fetchProfileAndOrders();
-  }, [login]);
+  }, [activeUser, login]);
 
   if (!profileLoaded) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
 
-  if (!user) {
+  if (!activeUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -104,7 +62,7 @@ export default function Profile() {
             {typeof window !== 'undefined' && console.debug && (console.debug('profile user:', user), null)}
 
             {(() => {
-              const u: any = user;
+              const u: any = activeUser;
 
               const extractEmail = (u: any) => {
                 return (

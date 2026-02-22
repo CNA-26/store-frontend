@@ -19,6 +19,7 @@ type CartContextShape = {
   cart: CartItem[];
   addToCart: (item: AddItem) => void;
   removeFromCart: (id: string) => void;
+  clearCart: () => void;
   hasInteracted: boolean;
   cartCount: number;
   notification: CartNotification | null;
@@ -60,6 +61,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setHasInteracted(true);
   };
 
+  const clearCart = () => {
+    setCart([]);
+  };
+
   const clearNotification = () => {
     setNotification(null);
   };
@@ -67,7 +72,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartCount = useMemo(() => cart.reduce((s, it) => s + it.qty, 0), [cart]);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, hasInteracted, cartCount, notification, clearNotification }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, hasInteracted, cartCount, notification, clearNotification }}>
       {children}
     </CartContext.Provider>
   );

@@ -1,15 +1,22 @@
 import { Link } from "react-router-dom";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useCart } from "../contexts/CartContext";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function WishlistPage() {
-  const { wishlist, removeFromWishlist } = useWishlist();
+  const { wishlist, removeFromWishlist, moveToCart, loading } = useWishlist();
   const { addToCart } = useCart();
+  const { user } = useAuth();
 
-  const handleAddToCart = (item: { id: string; name: string; price: number }) => {
-    addToCart(item);
-    // Optionally remove from wishlist after adding to cart
-    // removeFromWishlist(item.id);
+  const handleMoveToCart = async (item: { id: string; name: string; price: number }) => {
+    // Always add to cart immediately for a responsive UX
+    addToCart({ id: item.id, name: item.name, price: item.price });
+    // API move-to-cart removes the item server-side and updates local wishlist state
+    const moved = await moveToCart(item.id, 1);
+    // If API did not handle the removal, remove locally as fallback
+    if (!moved) {
+      removeFromWishlist(item.id);
+    }
   };
 
   return (
@@ -38,11 +45,21 @@ export default function WishlistPage() {
       </header>
 
       <main className="container mx-auto px-4 py-12">
+        {!user && (
+          <div className="mb-6 bg-monstera-lime border-2 border-monstera-green rounded-xl p-4 text-center text-monstera-dark">
+            <p className="font-semibold">
+              <Link to="/login" className="underline font-bold">Log in</Link> to save your wishlist across devices.
+            </p>
+          </div>
+        )}
+
         <h2 className="text-3xl font-bold text-monstera-dark mb-8">
           My Wishlist ({wishlist.length} {wishlist.length === 1 ? "item" : "items"})
         </h2>
 
-        {wishlist.length === 0 ? (
+        {loading ? (
+          <div className="text-center text-monstera-dark py-12 text-lg font-semibold">Loading wishlist…</div>
+        ) : wishlist.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-xl border-4 border-monstera-green p-12 text-center">
             <svg
               className="w-24 h-24 text-monstera-brown mx-auto mb-4"
@@ -76,10 +93,12 @@ export default function WishlistPage() {
                 key={item.id}
                 className="bg-white rounded-2xl shadow-xl border-4 border-monstera-green p-5 flex flex-col"
               >
-                <div className="h-40 rounded-xl bg-monstera-light flex items-center justify-center mb-4">
-                  <span className="text-monstera-brown text-sm">
-                    Image placeholder
-                  </span>
+                <div className="h-40 rounded-xl bg-monstera-light flex items-center justify-center mb-4 overflow-hidden">
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="h-full w-full object-cover rounded-xl" />
+                  ) : (
+                    <span className="text-monstera-brown text-sm">Image placeholder</span>
+                  )}
                 </div>
 
                 <h3 className="font-bold text-xl text-monstera-dark">
@@ -93,10 +112,10 @@ export default function WishlistPage() {
                 <div className="mt-auto space-y-2">
                   <button
                     type="button"
-                    onClick={() => handleAddToCart(item)}
+                    onClick={() => handleMoveToCart(item)}
                     className="w-full bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-4 rounded-full transition duration-300"
                   >
-                    Add to Cart
+                    Move to Cart
                   </button>
                   <button
                     type="button"
