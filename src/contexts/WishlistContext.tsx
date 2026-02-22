@@ -30,7 +30,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [loginToast, setLoginToast] = useState(false);
   const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   const userId: string | null = user?.id || user?.userId || user?._id || user?.email || null;
 
