@@ -5,20 +5,56 @@ import { Link } from "react-router-dom";
 type Delivery = "pickup" | "posti" | "home";
 type Payment = "card" | "bank" | "mobilepay" | "invoice";
 
+interface OrderData {
+  customer: {
+    email: string;
+    phone: string;
+    firstName: string;
+    lastName: string;
+  };
+  delivery: {
+    method: Delivery;
+    address: {
+      street: string;
+      postalCode: string;
+      city: string;
+    };
+  };
+  payment: {
+    method: Payment;
+  };
+  items: Array<{
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
+  totals: {
+    subtotal: number;
+    deliveryCost: number;
+    total: number;
+  };
+  timestamp: string;
+}
+
 export default function CheckoutPage() {
-  const { cart, removeFromCart, hasInteracted } = useCart();
+  const { cart, removeFromCart, hasInteracted, clearCart } = useCart();
 
-  // fallback placeholder items only before user interacts with the cart
-  const placeholder = [
-    { id: "1", name: "Monstera Deliciosa", price: 29.99, qty: 1 },
-    { id: "2", name: "Succulent Mix", price: 19.99, qty: 1 },
-  ];
+  const items = cart;
 
-  const items = cart.length ? cart : hasInteracted ? [] : placeholder;
-
+  // Form state
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [street, setStreet] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [city, setCity] = useState("");
   const [delivery, setDelivery] = useState<Delivery>("posti");
   const [payment, setPayment] = useState<Payment>("bank");
-  const [accept, setAccept] = useState(true);
+  const [accept, setAccept] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const subtotal = useMemo(() => items.reduce((s, it) => s + it.price * it.qty, 0), [items]);
 
@@ -29,6 +65,115 @@ export default function CheckoutPage() {
   }, [delivery]);
 
   const total = subtotal + deliveryCost;
+
+  // Validation
+  const isFormValid = () => {
+    return (
+      email.trim() &&
+      phone.trim() &&
+      firstName.trim() &&
+      lastName.trim() &&
+      street.trim() &&
+      postalCode.trim() &&
+      city.trim() &&
+      accept &&
+      items.length > 0
+    );
+  };
+
+  // Handle order submission
+  const handlePlaceOrder = async () => {
+    if (!isFormValid()) {
+      setSubmitMessage({ type: "error", text: "Please fill in all fields and accept terms." });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitMessage(null);
+
+    try {
+      // Build order data
+      const orderData: OrderData = {
+        customer: {
+          email,
+          phone,
+          firstName,
+          lastName,
+        },
+        delivery: {
+          method: delivery,
+          address: {
+            street,
+            postalCode,
+            city,
+          },
+        },
+        payment: {
+          method: payment,
+        },
+        items: items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.qty,
+        })),
+        totals: {
+          subtotal,
+          deliveryCost,
+          total,
+        },
+        timestamp: new Date().toISOString(),
+      };
+
+      // TODO: Replace this with your actual API endpoint
+      const apiResponse = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!apiResponse.ok) {
+        throw new Error(`API error: ${apiResponse.statusText}`);
+      }
+
+      const response = await apiResponse.json();
+      
+      // Log the order data for debugging (can be removed later)
+      console.log("Order placed successfully:", response);
+      
+      // Clear cart and show success message
+      clearCart();
+      setSubmitMessage({ 
+        type: "success", 
+        text: `Order placed successfully! Order ID: ${response.orderId || "pending"}`
+      });
+
+      // Reset form
+      setTimeout(() => {
+        setEmail("");
+        setPhone("");
+        setFirstName("");
+        setLastName("");
+        setStreet("");
+        setPostalCode("");
+        setCity("");
+        setDelivery("posti");
+        setPayment("bank");
+        setAccept(false);
+        setSubmitMessage(null);
+      }, 2000);
+    } catch (error) {
+      console.error("Order submission error:", error);
+      setSubmitMessage({ 
+        type: "error", 
+        text: error instanceof Error ? error.message : "Failed to place order. Please try again."
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-monstera-light">
@@ -59,22 +204,36 @@ export default function CheckoutPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Email">
                   <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
                     placeholder="name@example.com"
                   />
                 </Field>
                 <Field label="Phone (Finland format)">
                   <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
                     placeholder="+358 40 123 4567"
                   />
                 </Field>
 
                 <Field label="First name">
-                  <input className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark" />
+                  <input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                  />
                 </Field>
                 <Field label="Last name">
-                  <input className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark" />
+                  <input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                  />
                 </Field>
               </div>
             </Section>
@@ -120,6 +279,8 @@ export default function CheckoutPage() {
                 <div className="sm:col-span-2">
                   <Field label="Street address">
                     <input
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
                       placeholder="Examplekatu 12 A"
                     />
@@ -128,6 +289,8 @@ export default function CheckoutPage() {
 
                 <Field label="Postal code">
                   <input
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
                     placeholder="00100"
                     inputMode="numeric"
@@ -139,6 +302,8 @@ export default function CheckoutPage() {
 
                 <Field label="City">
                   <input
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
                     placeholder="Helsinki"
                   />
@@ -231,17 +396,26 @@ export default function CheckoutPage() {
               </span>
             </label>
 
+            {submitMessage && (
+              <div
+                className={`mt-4 p-3 rounded-lg text-sm font-semibold ${
+                  submitMessage.type === "success"
+                    ? "bg-green-100 text-green-800 border border-green-300"
+                    : "bg-red-100 text-red-800 border border-red-300"
+                }`}
+              >
+                {submitMessage.text}
+              </div>
+            )}
+
             <button
               type="button"
-              disabled={!accept}
-              className="mt-5 w-full bg-monstera-green hover:bg-monstera-dark text-white font-bold py-3 px-6 rounded-full transition duration-300 disabled:opacity-50"
+              onClick={handlePlaceOrder}
+              disabled={!accept || isSubmitting || items.length === 0}
+              className="mt-5 w-full bg-monstera-green hover:bg-monstera-dark text-white font-bold py-3 px-6 rounded-full transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Place order
+              {isSubmitting ? "Processing..." : "Place order"}
             </button>
-
-            <p className="text-xs text-monstera-brown mt-3">
-              In progress
-            </p>
           </aside>
         </div>
       </main>
