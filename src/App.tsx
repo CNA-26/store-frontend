@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import CheckoutPage from "./pages/CheckoutPage";
 import ProductsPage from "./pages/ProductsPage";
@@ -11,9 +11,115 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
+type HomeProduct = {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+  description?: string;
+  code?: string;
+};
+
+const FALLBACK_PRODUCTS: HomeProduct[] = [
+  { id: "P001", name: "Monstera", price: 25, image: "https://placehold.co/500x500?text=Monstera", description: "A classic statement plant." },
+  { id: "P002", name: "Alocasia", price: 59, image: "https://placehold.co/500x500?text=Alocasia", description: "Bold leaves and tropical vibes." },
+  { id: "P003", name: "Strelitzia", price: 139, image: "https://placehold.co/500x500?text=Strelitzia", description: "Tall and dramatic for bright rooms." },
+  { id: "P004", name: "Snake Plant", price: 24.99, image: "https://placehold.co/500x500?text=Snake+Plant", description: "Low-maintenance and beginner friendly." },
+];
+
+const FEATURED_COUNT = 9;
+
 function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [products, setProducts] = useState<HomeProduct[]>(FALLBACK_PRODUCTS);
   const { addToCart } = useCart();
+  const { wishlistStats } = useWishlist();
+  const PRODUCT_API = (import.meta.env.VITE_API_BASE as string) || "https://product-service-products-service.2.rahtiapp.fi";
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch(`${PRODUCT_API.replace(/\/$/, "")}/products`);
+        if (!res.ok) return;
+        const data: unknown = await res.json();
+        if (!Array.isArray(data)) return;
+        const mapped: HomeProduct[] = (data as any[]).map((p) => {
+          let image: string | undefined;
+          try {
+            if (p?.img) {
+              image = /^https?:\/\//.test(String(p.img))
+                ? String(p.img)
+                : `${new URL(PRODUCT_API).origin}/images/${String(p.img)}`;
+            }
+          } catch {
+            image = undefined;
+          }
+
+          const code = String(p?.product_code ?? p?.id ?? "");
+          return {
+            id: code || `p-${Math.random().toString(36).slice(2, 7)}`,
+            code: code || undefined,
+            name: String(p?.product_name ?? p?.name ?? "Unnamed"),
+            price: Number(p?.price ?? 0),
+            image,
+            description: p?.description_text ?? p?.description,
+          };
+        });
+
+        if (mounted && mapped.length > 0) {
+          setProducts(mapped);
+        }
+      } catch {
+        // Keep fallback products on home page if API is unavailable
+      }
+    };
+
+    void fetchProducts();
+    return () => {
+      mounted = false;
+    };
+  }, [PRODUCT_API]);
+
+  const productByCode = useMemo(() => {
+    return products.reduce<Record<string, HomeProduct>>((acc, product) => {
+      const key = product.code ?? product.id;
+      if (key) acc[key] = product;
+      return acc;
+    }, {});
+  }, [products]);
+
+  const popularProducts = useMemo(() => {
+    const rankedCodes = Object.entries(wishlistStats)
+      .sort((a, b) => b[1] - a[1])
+      .map(([code]) => code);
+
+    const rankedProducts = rankedCodes
+      .map((code) => productByCode[code])
+      .filter((product): product is HomeProduct => Boolean(product));
+
+    const rankedIds = new Set(rankedProducts.map((p) => p.id));
+    const fallbackProducts = products.filter((p) => !rankedIds.has(p.id));
+
+    return [...rankedProducts, ...fallbackProducts].slice(0, 3);
+  }, [wishlistStats, productByCode, products]);
+
+  const featuredProducts = useMemo(() => {
+    const popularIds = new Set(popularProducts.map((p) => p.id));
+    const candidates = products.filter((p) => !popularIds.has(p.id));
+    const shuffledCandidates = [...candidates].sort(() => Math.random() - 0.5);
+
+    if (shuffledCandidates.length >= FEATURED_COUNT) {
+      return shuffledCandidates.slice(0, FEATURED_COUNT);
+    }
+
+    const rest = products
+      .filter((p) => !shuffledCandidates.some((selected) => selected.id === p.id))
+      .sort(() => Math.random() - 0.5);
+
+    return [...shuffledCandidates, ...rest].slice(0, FEATURED_COUNT);
+  }, [products, popularProducts]);
+
   return (
     <div className="min-h-screen bg-monstera-light">
       <header className="bg-monstera-dark shadow-lg">
@@ -49,8 +155,8 @@ function HomePage() {
       </header>
 
       <main className="container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 border-4 border-monstera-green">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-8 md:p-12 border-4 border-monstera-green">
             <h2 className="text-4xl md:text-5xl font-bold text-monstera-dark mb-6">
               Your Green Paradise
             </h2>
@@ -99,65 +205,39 @@ function HomePage() {
             </div>
           </div>
 
-          <div className="mt-20">
-            <h2 className="text-3xl md:text-4xl font-bold text-monstera-dark mb-8 text-center">
-              Popular Plants
-            </h2>
-            <div className="grid md:grid-cols-3 gap-8">
-              <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition duration-300 transform hover:scale-105">
-                <img
-                  src="https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&h=400&fit=crop"
-                  alt="Monstera Deliciosa"
-                  className="h-48 w-full object-cover"
-                />
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold text-monstera-dark mb-2">Monstera Deliciosa</h3>
-                  <p className="text-monstera-brown mb-4">The classic Swiss Cheese Plant</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-monstera-green">€29.99</span>
-                    <button onClick={() => addToCart({ id: '1', name: 'Monstera Deliciosa', price: 29.99 })} className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
-                      Add to Cart
-                    </button>
-                  </div>
-                </div>
+          <div className="mt-20 space-y-12">
+            <section className="bg-white rounded-3xl border-4 border-monstera-green shadow-xl p-6 md:p-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-monstera-dark text-center">
+                Popular
+              </h2>
+              <p className="text-monstera-brown text-center mt-2 mb-8">Most wishlisted plants right now.</p>
+              <div className="grid md:grid-cols-3 gap-8">
+                {popularProducts.map((product) => (
+                  <HomeProductCard
+                    key={`popular-${product.id}`}
+                    product={product}
+                    onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
+                    badge={`${wishlistStats[product.code ?? product.id] ?? 0} wishlists`}
+                  />
+                ))}
               </div>
+            </section>
 
-              <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition duration-300 transform hover:scale-105">
-                <img
-                  src="https://images.unsplash.com/photo-1509937528035-ad76254b0356?w=800&h=400&fit=crop"
-                  alt="Succulent Mix"
-                  className="h-48 w-full object-cover"
-                />
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold text-monstera-dark mb-2">Succulent Mix</h3>
-                  <p className="text-monstera-brown mb-4">Easy-care collection of 3 succulents</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-monstera-green">€19.99</span>
-                    <button onClick={() => addToCart({ id: '2', name: 'Succulent Mix', price: 19.99 })} className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
-                      Add to Cart
-                    </button>
-                  </div>
-                </div>
+            <section className="bg-monstera-lime rounded-3xl border-4 border-monstera-brown shadow-xl p-6 md:p-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-monstera-dark text-center">
+                Featured
+              </h2>
+              <p className="text-monstera-dark text-center mt-2 mb-8">Random picks to discover something new.</p>
+              <div className="grid md:grid-cols-3 gap-8">
+                {featuredProducts.map((product) => (
+                  <HomeProductCard
+                    key={`featured-${product.id}`}
+                    product={product}
+                    onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
+                  />
+                ))}
               </div>
-
-              <div className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition duration-300 transform hover:scale-105">
-                <img
-                  src="https://images.unsplash.com/photo-1593482892290-f54927ae1bb8?w=800&h=400&fit=crop"
-                  alt="Pothos Marble"
-                  className="h-48 w-full object-cover"
-                />
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold text-monstera-dark mb-2">Pothos Marble</h3>
-                  <p className="text-monstera-brown mb-4">Beautiful trailing plant for beginners</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-monstera-green">€24.99</span>
-                    <button onClick={() => addToCart({ id: '3', name: 'Pothos Marble', price: 24.99 })} className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300">
-                      Add to Cart
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </section>
           </div>
         </div>
       </main>
@@ -171,6 +251,51 @@ function HomePage() {
       </footer>
     </div>
   )
+}
+
+function HomeProductCard({
+  product,
+  onAdd,
+  badge,
+}: {
+  product: HomeProduct;
+  onAdd: () => void;
+  badge?: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden shadow-xl border-4 border-monstera-green hover:shadow-2xl transition duration-300 transform hover:scale-105 h-full flex flex-col">
+      <div className="h-48 w-full bg-monstera-light border-b-2 border-monstera-green flex items-center justify-center overflow-hidden">
+        {product.image ? (
+          <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-monstera-brown text-sm font-semibold">Image placeholder</span>
+        )}
+      </div>
+      <div className="p-6 flex flex-col flex-1">
+        <h3 className="text-2xl font-bold text-monstera-dark mb-2">{product.name}</h3>
+        <p className="text-monstera-brown mb-4 min-h-[3rem] line-clamp-2">{product.description ?? "A healthy plant for your indoor jungle."}</p>
+        <div className="mt-auto">
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-2xl font-bold text-monstera-green whitespace-nowrap">{eur(product.price)}</span>
+            <button
+              onClick={onAdd}
+              className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-6 rounded-full transition duration-300 whitespace-nowrap min-w-[8rem]"
+            >
+              Add to Cart
+            </button>
+          </div>
+          <p className="text-sm text-monstera-brown mt-1 min-h-[1.25rem] text-center">{badge ?? ""}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function eur(n: number) {
+  return new Intl.NumberFormat("fi-FI", {
+    style: "currency",
+    currency: "EUR",
+  }).format(n);
 }
 
 
@@ -318,23 +443,23 @@ function CartNotification() {
   return (
     <div
       onClick={handleClick}
-      className={`fixed top-36 right-4 z-40 cursor-pointer transition-all duration-300 transform ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'
+      className={`fixed bottom-6 right-6 z-40 cursor-pointer transition-all duration-300 transform ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'
         }`}
     >
-      <div className="bg-monstera-green text-white rounded-xl shadow-2xl p-5 min-w-[320px] border-2 border-monstera-dark hover:bg-monstera-dark transition-colors">
+      <div className="bg-monstera-green text-white rounded-xl shadow-2xl p-6 min-w-[360px] border-2 border-monstera-dark hover:bg-monstera-dark transition-colors">
         <div className="flex items-start gap-4">
-          <div className="bg-white rounded-full p-2.5 flex-shrink-0">
-            <svg className="w-6 h-6 text-monstera-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white rounded-full p-3 flex-shrink-0">
+            <svg className="w-7 h-7 text-monstera-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div className="flex-1">
-            <p className="font-bold text-base mb-1.5">
+            <p className="font-bold text-lg mb-1.5 leading-tight">
               {notification.count > 1
                 ? `${notification.count}x ${notification.productName}`
                 : notification.productName}
             </p>
-            <p className="text-sm text-monstera-light">
+            <p className="text-base text-monstera-light">
               Added to cart • Click to view cart
             </p>
           </div>
@@ -381,18 +506,18 @@ function WishlistLoginToast() {
   return (
     <div
       onClick={handleClick}
-      className={`fixed top-52 right-4 z-40 cursor-pointer transition-all duration-300 transform ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}`}
+      className={`fixed bottom-32 right-6 z-40 cursor-pointer transition-all duration-300 transform ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}`}
     >
-      <div className="bg-monstera-brown text-white rounded-xl shadow-2xl p-5 min-w-[320px] border-2 border-monstera-dark hover:bg-monstera-dark transition-colors">
+      <div className="bg-monstera-brown text-white rounded-xl shadow-2xl p-6 min-w-[360px] border-2 border-monstera-dark hover:bg-monstera-dark transition-colors">
         <div className="flex items-start gap-4">
-          <div className="bg-white rounded-full p-2.5 flex-shrink-0">
-            <svg className="w-6 h-6 text-monstera-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white rounded-full p-3 flex-shrink-0">
+            <svg className="w-7 h-7 text-monstera-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </div>
           <div className="flex-1">
-            <p className="font-bold text-base mb-1.5">Log in to use wishlist</p>
-            <p className="text-sm text-monstera-light">Click here to log in and save products to your wishlist.</p>
+            <p className="font-bold text-lg mb-1.5 leading-tight">Log in to use wishlist</p>
+            <p className="text-base text-monstera-light">Click here to log in and save products to your wishlist.</p>
           </div>
         </div>
       </div>

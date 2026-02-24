@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 
-const WISHLIST_API = "https://wishlist-service-git-wishlist-service.2.rahtiapp.fi";
+const WISHLIST_API = (import.meta.env.VITE_WISHLIST_API as string) || "https://wishlist-service-git-wishlist-service.2.rahtiapp.fi";
 
 export type WishlistItem = {
   id: string;
@@ -12,14 +12,17 @@ export type WishlistItem = {
 
 type WishlistContextShape = {
   wishlist: WishlistItem[];
+  wishlistStats: Record<string, number>;
   addToWishlist: (item: WishlistItem) => void;
   removeFromWishlist: (id: string) => void;
   isInWishlist: (id: string) => boolean;
   wishlistCount: number;
   moveToCart: (productCode: string, quantity?: number) => Promise<{ productCode: string; quantity: number } | null>;
   loading: boolean;
+  statsLoading: boolean;
   loginToast: boolean;
   clearLoginToast: () => void;
+  refreshWishlistStats: () => Promise<void>;
 };
 
 const WishlistContext = createContext<WishlistContextShape | undefined>(undefined);
@@ -27,7 +30,9 @@ const WishlistContext = createContext<WishlistContextShape | undefined>(undefine
 export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [wishlistStats, setWishlistStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [loginToast, setLoginToast] = useState(false);
   const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
   const PRODUCT_API = (import.meta.env.VITE_API_BASE as string) || "https://product-service-products-service.2.rahtiapp.fi";
@@ -78,6 +83,33 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       return Number.isFinite(parsed) ? parsed : null;
     }
     return null;
+  };
+
+  const refreshWishlistStats = async () => {
+    setStatsLoading(true);
+    try {
+      logWishlistRequest("request", { action: "fetchWishlistStats", method: "GET", url: `${WISHLIST_API}/wishlist/stats` });
+      const res = await fetch(`${WISHLIST_API}/wishlist/stats`);
+      logWishlistRequest("response", { action: "fetchWishlistStats", status: res.status, ok: res.ok });
+      if (!res.ok) return;
+      const data: unknown = await res.json();
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        setWishlistStats({});
+        return;
+      }
+      const normalized = Object.entries(data as Record<string, unknown>).reduce<Record<string, number>>((acc, [code, count]) => {
+        const parsed = typeof count === "number" ? count : Number(count);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          acc[String(code)] = parsed;
+        }
+        return acc;
+      }, {});
+      setWishlistStats(normalized);
+    } catch (error) {
+      logWishlistRequest("error", { action: "fetchWishlistStats", message: error instanceof Error ? error.message : "unknown" });
+    } finally {
+      setStatsLoading(false);
+    }
   };
 
   const userId: string | null = user?.id || user?.userId || user?._id || user?.email || null;
@@ -175,6 +207,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
   }, [userId, token]);
 
+  useEffect(() => {
+    void refreshWishlistStats();
+  }, []);
+
   const addToWishlist = (item: WishlistItem) => {
     // Block wishlisting for unauthenticated users and prompt them to log in
     if (!userId || !token) {
@@ -220,7 +256,9 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
               setLoginToast(true);
             }
           }
+          return;
         }
+        await refreshWishlistStats();
       })
       .catch((error) => {
         logWishlistRequest("error", { action: "addToWishlist", message: error instanceof Error ? error.message : "unknown", productCode: item.id });
@@ -275,7 +313,9 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
               setLoginToast(true);
             }
           }
+          return;
         }
+        await refreshWishlistStats();
       })
       .catch((error) => {
         logWishlistRequest("error", { action: "removeFromWishlist", message: error instanceof Error ? error.message : "unknown", productCode: id });
@@ -302,7 +342,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`${WISHLIST_API}/wishlist/move-to-cart`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userId, productCode, quantity }),
+        body: JSON.stringify({ userId, productCode }),
       });
       logWishlistRequest("response", { action: "moveToCart", status: res.status, ok: res.ok, productCode, quantity });
       if (!res.ok) {
@@ -327,17 +367,21 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
       const data = await res.json();
-      // Reflect the server-side wishlist state after the move
-      if (Array.isArray(data.wishlistNow)) {
-        // wishlistNow may be product code strings or objects with a productCode field
+      if (Array.isArray(data.remainingWishlist)) {
         const remaining = new Set<string>(
-          (data.wishlistNow as Array<string | { productCode: string }>).map((item) =>
-            typeof item === "string" ? item : item.productCode
+          (data.remainingWishlist as Array<string | { productCode?: string; product_code?: string }>).map((item) =>
+            typeof item === "string" ? item : String(item.productCode ?? item.product_code ?? "")
           )
         );
         setWishlist((prev) => prev.filter((item) => remaining.has(item.id)));
+      } else {
+        setWishlist((prev) => prev.filter((item) => item.id !== productCode));
       }
-      return data.moved ?? null;
+      await refreshWishlistStats();
+      return {
+        productCode: String(data.productCode ?? productCode),
+        quantity,
+      };
     } catch (error) {
       logWishlistRequest("error", { action: "moveToCart", message: error instanceof Error ? error.message : "unknown", productCode, quantity });
       return null;
@@ -350,7 +394,20 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WishlistContext.Provider
-      value={{ wishlist, addToWishlist, removeFromWishlist, isInWishlist, wishlistCount, moveToCart, loading, loginToast, clearLoginToast }}
+      value={{
+        wishlist,
+        wishlistStats,
+        addToWishlist,
+        removeFromWishlist,
+        isInWishlist,
+        wishlistCount,
+        moveToCart,
+        loading,
+        statsLoading,
+        loginToast,
+        clearLoginToast,
+        refreshWishlistStats,
+      }}
     >
       {children}
     </WishlistContext.Provider>
