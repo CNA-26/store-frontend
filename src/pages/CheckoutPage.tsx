@@ -5,8 +5,8 @@ import { Link } from "react-router-dom";
 const BASE_URL = "https://order-service-git-order-service.2.rahtiapp.fi";
 const API_KEY = "sprint3secret";
 
-type Delivery = "pickup" | "posti" | "home";
-type Payment = "card" | "bank" | "mobilepay" | "invoice";
+type Delivery = "pickup" | "home";
+type Payment = "invoice";
 
 interface OrderData {
   customer: {
@@ -64,8 +64,8 @@ export default function CheckoutPage() {
   const [street, setStreet] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
-  const [delivery, setDelivery] = useState<Delivery>("posti");
-  const [payment, setPayment] = useState<Payment>("bank");
+  const [delivery, setDelivery] = useState<Delivery>("home");
+  const [payment, setPayment] = useState<Payment>("invoice");
   const [accept, setAccept] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -74,8 +74,7 @@ export default function CheckoutPage() {
 
   const deliveryCost = useMemo(() => {
     if (delivery === "pickup") return 0;
-    if (delivery === "posti") return 4.9; 
-    return 9.9; 
+    return 9.9; // home delivery
   }, [delivery]);
 
   const total = subtotal + deliveryCost;
@@ -178,8 +177,8 @@ export default function CheckoutPage() {
         setStreet("");
         setPostalCode("");
         setCity("");
-        setDelivery("posti");
-        setPayment("bank");
+        setDelivery("home");
+        setPayment("invoice");
         setAccept(false);
         setSubmitMessage(null);
       }, 2000);
@@ -230,7 +229,7 @@ export default function CheckoutPage() {
                     placeholder="name@example.com"
                   />
                 </Field>
-                <Field label="Phone (Finland format)">
+                <Field label="Phone number">
                   <input
                     type="tel"
                     value={phone}
@@ -259,27 +258,6 @@ export default function CheckoutPage() {
 
             <Section title="Delivery">
               <div className="grid gap-4">
-                <RadioCard
-                  title="Posti / pickup point (recommended)"
-                  desc="Parcel locker or pickup point (mock selector)"
-                  checked={delivery === "posti"}
-                  onClick={() => setDelivery("posti")}
-                />
-                {delivery === "posti" && (
-                  <div className="rounded-xl bg-white p-4 border-2 border-monstera-green">
-                    <p className="font-bold text-monstera-dark">Pickup point</p>
-                    <p className="text-monstera-brown text-sm mt-1">
-                      Placeholder: later you can add a pickup-point search/map.
-                    </p>
-                    <button
-                      type="button"
-                      className="mt-3 bg-monstera-lime hover:bg-monstera-brown text-monstera-dark hover:text-white font-bold py-2 px-5 rounded-full transition duration-300"
-                    >
-                      Select pickup point
-                    </button>
-                  </div>
-                )}
-
                 <RadioCard
                   title="Home delivery"
                   desc="Delivered to your address"
@@ -314,9 +292,6 @@ export default function CheckoutPage() {
                     placeholder="00100"
                     inputMode="numeric"
                   />
-                  <p className="mt-1 text-xs text-monstera-brown">
-                    Finland postal codes are 5 digits.
-                  </p>
                 </Field>
 
                 <Field label="City">
@@ -331,36 +306,10 @@ export default function CheckoutPage() {
             </Section>
 
             <Section title="Payment">
-              <div className="grid gap-4">
-                <RadioCard
-                  title="Online banking"
-                  desc="(Paytrail etc)"
-                  checked={payment === "bank"}
-                  onClick={() => setPayment("bank")}
-                />
-                <RadioCard
-                  title="Card"
-                  desc="Visa / Mastercard"
-                  checked={payment === "card"}
-                  onClick={() => setPayment("card")}
-                />
-                <RadioCard
-                  title="MobilePay"
-                  desc="Mobile payment"
-                  checked={payment === "mobilepay"}
-                  onClick={() => setPayment("mobilepay")}
-                />
-                <RadioCard
-                  title="Invoice"
-                  desc="Pay later"
-                  checked={payment === "invoice"}
-                  onClick={() => setPayment("invoice")}
-                />
-              </div>
-
-              <div className="mt-4 bg-white rounded-xl p-4 border-2 border-monstera-green">
-                <p className="text-sm text-monstera-brown">
-                  In progress
+              <div className="rounded-xl bg-monstera-light p-4 border-2 border-monstera-green">
+                <p className="font-bold text-monstera-dark">Invoice</p>
+                <p className="text-monstera-brown text-sm mt-1">
+                  Payment will be processed via invoice
                 </p>
               </div>
             </Section>
