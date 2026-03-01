@@ -38,7 +38,7 @@ interface OrderData {
 }
 
 export default function CheckoutPage() {
-  const { cart, removeFromCart, hasInteracted, clearCart } = useCart();
+  const { cart, removeFromCart, clearCart } = useCart();
 
   const items = cart;
 
