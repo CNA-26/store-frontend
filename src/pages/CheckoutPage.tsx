@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import { useCart } from "../contexts/CartContext";
 import { Link } from "react-router-dom";
 
+const BASE_URL = "https://order-service-git-order-service.2.rahtiapp.fi";
+const API_KEY = "sprint3secret";
+
 type Delivery = "pickup" | "posti" | "home";
 type Payment = "card" | "bank" | "mobilepay" | "invoice";
 
@@ -35,6 +38,17 @@ interface OrderData {
     total: number;
   };
   timestamp: string;
+  acceptedTerms: boolean;
+}
+
+// Helper function to safely parse JSON responses
+async function safeJson(res: Response) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 }
 
 export default function CheckoutPage() {
@@ -123,22 +137,27 @@ export default function CheckoutPage() {
           total,
         },
         timestamp: new Date().toISOString(),
+        acceptedTerms: true,
       };
 
-      // TODO: Replace this with your actual API endpoint
-      const apiResponse = await fetch("/api/orders", {
+      // Call the actual API endpoint
+      const apiResponse = await fetch(`${BASE_URL}/api/v1/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-API-Key": API_KEY,
         },
         body: JSON.stringify(orderData),
       });
 
+      const response = await safeJson(apiResponse);
+      
       if (!apiResponse.ok) {
-        throw new Error(`API error: ${apiResponse.statusText}`);
+        const msg = typeof response === "string" 
+          ? response 
+          : (response?.error || response?.message || JSON.stringify(response));
+        throw new Error(`API error (${apiResponse.status}): ${msg}`);
       }
-
-      const response = await apiResponse.json();
       
       // Log the order data for debugging (can be removed later)
       console.log("Order placed successfully:", response);
@@ -147,7 +166,7 @@ export default function CheckoutPage() {
       clearCart();
       setSubmitMessage({ 
         type: "success", 
-        text: `Order placed successfully! Order ID: ${response.orderId || "pending"}`
+        text: `Order placed successfully! Order ID: ${response?.data?.id || response?.orderId || "pending"}`
       });
 
       // Reset form
