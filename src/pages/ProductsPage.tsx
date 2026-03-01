@@ -42,29 +42,24 @@ export default function ProductPage() {
         if (!res.ok) throw new Error(`Status ${res.status} ${res.statusText}`);
         const data = await res.json();
         const list: Product[] = Array.isArray(data)
-          ? data.map((p: any) => {
-              let image: string | undefined;
-              try {
-                if (p.img) {
-                  if (/^https?:\/\//.test(p.img)) {
-                    image = p.img;
-                  } else {
-                    image = `${new URL(API_BASE).origin}/images/${p.img}`;
-                  }
-                }
-              } catch {
-                image = undefined;
-              }
-              return {
-                id: String(p.product_code ?? p.id ?? `p-${Math.random().toString(36).slice(2, 7)}`),
-                name: p.product_name ?? p.name ?? String(p.id ?? "Unnamed"),
-                price: Number(p.price ?? 0),
-                image,
-                description: p.description_text ?? p.description,
-                code: p.product_code ?? undefined,
-              } as Product;
-            })
-          : [];
+  ? data.map((p: any) => {
+      let image: string | undefined;
+
+      // ✅ FIX: read image_urls array
+      if (Array.isArray(p.image_urls) && p.image_urls.length > 0) {
+        image = p.image_urls[0];
+      }
+
+      return {
+        id: String(p.product_code ?? p.id ?? `p-${Math.random().toString(36).slice(2, 7)}`),
+        name: p.product_name ?? p.name ?? String(p.id ?? "Unnamed"),
+        price: Number(p.price ?? 0),
+        image,
+        description: p.description_text ?? p.description,
+        code: p.product_code ?? undefined,
+      } as Product;
+    })
+  : [];
         if (mounted) setProducts(list.length ? list : staticProducts);
       } catch (e: any) {
         console.error("Products fetch failed:", e);
@@ -176,7 +171,14 @@ function ProductCard({
         )}
       </div>
 
-      <h3 className="font-bold text-xl text-monstera-dark">{product.name}</h3>
+    <h3 className="font-bold text-xl text-monstera-dark">
+        <Link
+            to={`/products/${product.id}`}
+            className="font-bold text-xl text-monstera-dark hover:underline"
+            >
+            {product.name}
+        </Link>
+    </h3>
 
       <p className="mt-1 font-bold text-monstera-green">{eur(product.price)}</p>
 
