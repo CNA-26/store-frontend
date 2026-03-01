@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import CheckoutPage from "./pages/CheckoutPage";
 import ProductsPage from "./pages/ProductsPage";
+import ProductDetails from "./pages/ProductDetails";
 import WishlistPage from "./pages/WishlistPage";
 import ContactPage from "./pages/ContactPage";
 import { CartProvider, useCart } from "./contexts/CartContext";
@@ -310,6 +311,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/products" element={<ProductsPage />} />
+            <Route path="/products/:id" element={<ProductDetails />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
