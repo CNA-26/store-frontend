@@ -29,29 +29,59 @@ const FALLBACK_PRODUCTS: HomeProduct[] = [
 ];
 
 const FEATURED_COUNT = 9;
+const HOME_PRODUCTS_CACHE_KEY = "home_products_cache_v1";
+
+function readCachedHomeProducts(): HomeProduct[] {
+  try {
+    const raw = sessionStorage.getItem(HOME_PRODUCTS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as HomeProduct[];
+  } catch {
+    return [];
+  }
+}
 
 function HomePage() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [products, setProducts] = useState<HomeProduct[]>(FALLBACK_PRODUCTS);
+  const [searchError, setSearchError] = useState('')
+  const [products, setProducts] = useState<HomeProduct[]>(readCachedHomeProducts);
+  const [productsLoading, setProductsLoading] = useState(() => readCachedHomeProducts().length === 0);
   const { addToCart } = useCart();
-  const { wishlistStats } = useWishlist();
+  const { wishlistStats, addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  const navigate = useNavigate();
   const PRODUCT_API = (import.meta.env.VITE_API_BASE as string) || "https://product-service-products-service.2.rahtiapp.fi";
 
   useEffect(() => {
     let mounted = true;
     const fetchProducts = async () => {
+      if (products.length === 0) {
+        setProductsLoading(true);
+      }
       try {
         const res = await fetch(`${PRODUCT_API.replace(/\/$/, "")}/products`);
-        if (!res.ok) return;
+        if (!res.ok) throw new Error(`Status ${res.status}`);
         const data: unknown = await res.json();
-        if (!Array.isArray(data)) return;
+        if (!Array.isArray(data)) throw new Error("Invalid products payload");
         const mapped: HomeProduct[] = (data as any[]).map((p) => {
           let image: string | undefined;
           try {
-            if (p?.img) {
+            if (Array.isArray(p?.image_urls) && p.image_urls.length > 0) {
+              const firstImage = String(p.image_urls[0]);
+              image = /^https?:\/\//.test(firstImage)
+                ? firstImage
+                : firstImage.startsWith("/")
+                ? `${new URL(PRODUCT_API).origin}${firstImage}`
+                : `${new URL(PRODUCT_API).origin}/images/${firstImage}`;
+            } else if (p?.img) {
               image = /^https?:\/\//.test(String(p.img))
                 ? String(p.img)
                 : `${new URL(PRODUCT_API).origin}/images/${String(p.img)}`;
+            } else if (p?.image) {
+              image = /^https?:\/\//.test(String(p.image))
+                ? String(p.image)
+                : `${new URL(PRODUCT_API).origin}/images/${String(p.image)}`;
             }
           } catch {
             image = undefined;
@@ -70,9 +100,18 @@ function HomePage() {
 
         if (mounted && mapped.length > 0) {
           setProducts(mapped);
+          try {
+            sessionStorage.setItem(HOME_PRODUCTS_CACHE_KEY, JSON.stringify(mapped));
+          } catch {
+            // Ignore cache write errors
+          }
         }
       } catch {
-        // Keep fallback products on home page if API is unavailable
+        if (mounted && products.length === 0) {
+          setProducts(FALLBACK_PRODUCTS);
+        }
+      } finally {
+        if (mounted) setProductsLoading(false);
       }
     };
 
@@ -108,18 +147,75 @@ function HomePage() {
   const featuredProducts = useMemo(() => {
     const popularIds = new Set(popularProducts.map((p) => p.id));
     const candidates = products.filter((p) => !popularIds.has(p.id));
-    const shuffledCandidates = [...candidates].sort(() => Math.random() - 0.5);
+    const sortedCandidates = [...candidates].sort((a, b) =>
+      (a.name || a.id).localeCompare(b.name || b.id)
+    );
 
-    if (shuffledCandidates.length >= FEATURED_COUNT) {
-      return shuffledCandidates.slice(0, FEATURED_COUNT);
+    if (sortedCandidates.length >= FEATURED_COUNT) {
+      return sortedCandidates.slice(0, FEATURED_COUNT);
     }
 
     const rest = products
-      .filter((p) => !shuffledCandidates.some((selected) => selected.id === p.id))
-      .sort(() => Math.random() - 0.5);
+      .filter((p) => !sortedCandidates.some((selected) => selected.id === p.id))
+      .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
 
-    return [...shuffledCandidates, ...rest].slice(0, FEATURED_COUNT);
+    return [...sortedCandidates, ...rest].slice(0, FEATURED_COUNT);
   }, [products, popularProducts]);
+
+  const getProductDetailId = (product: HomeProduct) => product.code ?? product.id;
+
+  const searchSuggestions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+
+    return products
+      .filter((product) => {
+        const name = product.name.toLowerCase();
+        const description = (product.description ?? "").toLowerCase();
+        const code = (product.code ?? product.id).toLowerCase();
+        return name.includes(query) || description.includes(query) || code.includes(query);
+      })
+      .slice(0, 6);
+  }, [products, searchQuery]);
+
+  const handleSelectSearchSuggestion = (product: HomeProduct) => {
+    setSearchQuery(product.name);
+    setSearchError("");
+    navigate(`/products/${getProductDetailId(product)}`);
+  };
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      setSearchError("");
+      return;
+    }
+
+    const match = searchSuggestions[0];
+
+    if (!match) {
+      setSearchError("No matching plant found.");
+      return;
+    }
+
+    setSearchError("");
+    navigate(`/products/${getProductDetailId(match)}`);
+  };
+
+  const handleToggleWishlist = (product: HomeProduct) => {
+    const wishlistId = getProductDetailId(product);
+    if (isInWishlist(wishlistId)) {
+      removeFromWishlist(wishlistId);
+      return;
+    }
+    addToWishlist({
+      id: wishlistId,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-monstera-light">
@@ -129,28 +225,53 @@ function HomePage() {
             Monstera
           </h1>
           <div className="max-w-2xl mx-auto">
-            <div className="relative">
+            <form className="relative" onSubmit={handleSearchSubmit}>
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (searchError) setSearchError("");
+                }}
                 placeholder="Search for plants..."
                 className="w-full px-6 py-3 pl-12 rounded-full border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark text-lg"
               />
-              <svg
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-monstera-brown"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <button
+                type="submit"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full hover:bg-monstera-light transition"
+                aria-label="Search products"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
+                <svg
+                  className="w-6 h-6 text-monstera-brown"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </button>
+
+              {searchSuggestions.length > 0 && (
+                <div className="absolute z-20 mt-2 w-full bg-white rounded-2xl border-2 border-monstera-lime shadow-xl overflow-hidden">
+                  {searchSuggestions.map((product) => (
+                    <button
+                      key={`search-${product.id}`}
+                      type="button"
+                      onClick={() => handleSelectSearchSuggestion(product)}
+                      className="w-full px-4 py-3 text-left hover:bg-monstera-light transition border-b border-monstera-light last:border-b-0"
+                    >
+                      <span className="text-monstera-dark font-semibold truncate">{product.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </form>
+            <p className="text-monstera-lime text-sm mt-2 min-h-[1.25rem] text-center">{searchError}</p>
           </div>
         </div>
       </header>
@@ -213,14 +334,24 @@ function HomePage() {
               </h2>
               <p className="text-monstera-brown text-center mt-2 mb-8">Most wishlisted plants right now.</p>
               <div className="grid md:grid-cols-3 gap-8">
-                {popularProducts.map((product) => (
-                  <HomeProductCard
-                    key={`popular-${product.id}`}
-                    product={product}
-                    onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
-                    badge={`${wishlistStats[product.code ?? product.id] ?? 0} wishlists`}
-                  />
-                ))}
+                {productsLoading && products.length === 0
+                  ? Array.from({ length: 3 }).map((_, index) => (
+                      <div
+                        key={`popular-skeleton-${index}`}
+                        className="h-[360px] rounded-2xl bg-monstera-light border-4 border-monstera-green animate-pulse"
+                      />
+                    ))
+                  : popularProducts.map((product) => (
+                      <HomeProductCard
+                        key={`popular-${product.id}`}
+                        product={product}
+                        onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
+                        onToggleWishlist={() => handleToggleWishlist(product)}
+                        isInWishlist={isInWishlist(getProductDetailId(product))}
+                        detailPath={`/products/${getProductDetailId(product)}`}
+                        badge={`${wishlistStats[product.code ?? product.id] ?? 0} wishlists`}
+                      />
+                    ))}
               </div>
             </section>
 
@@ -230,13 +361,23 @@ function HomePage() {
               </h2>
               <p className="text-monstera-dark text-center mt-2 mb-8">Random picks to discover something new.</p>
               <div className="grid md:grid-cols-3 gap-8">
-                {featuredProducts.map((product) => (
-                  <HomeProductCard
-                    key={`featured-${product.id}`}
-                    product={product}
-                    onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
-                  />
-                ))}
+                {productsLoading && products.length === 0
+                  ? Array.from({ length: 9 }).map((_, index) => (
+                      <div
+                        key={`featured-skeleton-${index}`}
+                        className="h-[360px] rounded-2xl bg-white/60 border-4 border-monstera-brown animate-pulse"
+                      />
+                    ))
+                  : featuredProducts.map((product) => (
+                      <HomeProductCard
+                        key={`featured-${product.id}`}
+                        product={product}
+                        onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
+                        onToggleWishlist={() => handleToggleWishlist(product)}
+                        isInWishlist={isInWishlist(getProductDetailId(product))}
+                        detailPath={`/products/${getProductDetailId(product)}`}
+                      />
+                    ))}
               </div>
             </section>
           </div>
@@ -257,23 +398,49 @@ function HomePage() {
 function HomeProductCard({
   product,
   onAdd,
+  onToggleWishlist,
+  isInWishlist,
+  detailPath,
   badge,
 }: {
   product: HomeProduct;
   onAdd: () => void;
+  onToggleWishlist: () => void;
+  isInWishlist: boolean;
+  detailPath: string;
   badge?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-xl border-4 border-monstera-green hover:shadow-2xl transition duration-300 transform hover:scale-105 h-full flex flex-col">
-      <div className="h-48 w-full bg-monstera-light border-b-2 border-monstera-green flex items-center justify-center overflow-hidden">
+    <div className="bg-white rounded-2xl overflow-hidden shadow-xl border-4 border-monstera-green hover:shadow-2xl transition duration-300 transform hover:scale-105 h-full flex flex-col relative">
+      <button
+        type="button"
+        onClick={onToggleWishlist}
+        className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white hover:bg-monstera-light transition duration-300 shadow-md"
+        aria-label={isInWishlist ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+      >
+        <svg
+          className={`w-6 h-6 ${isInWishlist ? "fill-red-500 text-red-500" : "text-monstera-brown"}`}
+          fill={isInWishlist ? "currentColor" : "none"}
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+      </button>
+
+      <Link to={detailPath} className="h-48 w-full bg-monstera-light border-b-2 border-monstera-green flex items-center justify-center overflow-hidden">
         {product.image ? (
           <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
         ) : (
           <span className="text-monstera-brown text-sm font-semibold">Image placeholder</span>
         )}
-      </div>
+      </Link>
       <div className="p-6 flex flex-col flex-1">
-        <h3 className="text-2xl font-bold text-monstera-dark mb-2">{product.name}</h3>
+        <h3 className="text-2xl font-bold text-monstera-dark mb-2">
+          <Link to={detailPath} className="hover:underline">
+            {product.name}
+          </Link>
+        </h3>
         <p className="text-monstera-brown mb-4 min-h-[3rem] line-clamp-2">{product.description ?? "A healthy plant for your indoor jungle."}</p>
         <div className="mt-auto">
           <div className="flex items-center justify-center gap-3">

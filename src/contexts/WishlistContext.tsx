@@ -84,6 +84,19 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     }
     return null;
   };
+  const resolveProductImage = (candidate: unknown) => {
+    if (!candidate) return undefined;
+    const raw = String(candidate);
+    if (!raw) return undefined;
+    try {
+      if (/^https?:\/\//.test(raw)) return raw;
+      const baseOrigin = new URL(PRODUCT_API).origin;
+      if (raw.startsWith("/")) return `${baseOrigin}${raw}`;
+      return `${baseOrigin}/images/${raw}`;
+    } catch {
+      return undefined;
+    }
+  };
 
   const refreshWishlistStats = async () => {
     setStatsLoading(true);
@@ -151,15 +164,16 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
               codeFromPrimitive ?? p?.productCode ?? p?.product_code ?? p?.code ?? p?.id ?? ""
             );
             const price = parsePrice(p?.pris ?? p?.price ?? p?.product_price);
+            const firstImage = Array.isArray(p?.image_urls) && p.image_urls.length > 0 ? p.image_urls[0] : undefined;
             return {
               id: code,
               name: p?.name ?? p?.product_name ?? p?.title ?? "",
               price: price ?? 0,
-              image: p?.image ?? p?.img,
+              image: resolveProductImage(firstImage ?? p?.image ?? p?.img),
             };
           });
 
-          const needsEnrichment = items.some((it) => !it.name || !(Number.isFinite(it.price) && it.price > 0));
+          const needsEnrichment = items.some((it) => !it.name || !(Number.isFinite(it.price) && it.price > 0) || !it.image);
           if (needsEnrichment) {
             try {
               const productRes = await fetch(`${PRODUCT_API.replace(/\/$/, "")}/products`);
@@ -180,12 +194,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
                     if (matchedPrice !== null) item.price = matchedPrice;
                   }
                   if (!item.image) {
-                    const img = matched.img ?? matched.image;
-                    if (img) {
-                      item.image = /^https?:\/\//.test(String(img))
-                        ? String(img)
-                        : `${new URL(PRODUCT_API).origin}/images/${img}`;
-                    }
+                    const matchedImage = Array.isArray(matched?.image_urls) && matched.image_urls.length > 0
+                      ? matched.image_urls[0]
+                      : matched.img ?? matched.image;
+                    item.image = resolveProductImage(matchedImage);
                   }
                 }
               }

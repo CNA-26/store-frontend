@@ -91,18 +91,20 @@ export default function WishlistPage() {
             {wishlist.map((item) => (
               <div
                 key={item.id}
-                className="bg-white rounded-2xl shadow-xl border-4 border-monstera-green p-5 flex flex-col"
+                className="group bg-white rounded-2xl shadow-xl border-4 border-monstera-green p-5 flex flex-col transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
               >
-                <div className="h-40 rounded-xl bg-monstera-light flex items-center justify-center mb-4 overflow-hidden">
+                <Link to={`/products/${item.id}`} className="h-40 rounded-xl bg-monstera-light flex items-center justify-center mb-4 overflow-hidden">
                   {item.image ? (
-                    <img src={item.image} alt={item.name} className="h-full w-full object-cover rounded-xl" />
+                    <img src={item.image} alt={item.name} className="h-full w-full object-cover rounded-xl transition duration-300 group-hover:scale-105" />
                   ) : (
                     <span className="text-monstera-brown text-sm">Image placeholder</span>
                   )}
-                </div>
+                </Link>
 
                 <h3 className="font-bold text-xl text-monstera-dark">
-                  {item.name}
+                  <Link to={`/products/${item.id}`} className="hover:underline group-hover:text-monstera-green transition duration-300">
+                    {item.name}
+                  </Link>
                 </h3>
 
                 <p className="mt-1 font-bold text-monstera-green">

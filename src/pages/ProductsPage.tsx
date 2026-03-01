@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useWishlist } from "../contexts/WishlistContext";
 import { useEffect, useState } from "react";
@@ -21,7 +21,7 @@ const staticProducts: Product[] = [
 ];
 
 export default function ProductPage() {
-  const { addToCart, cartCount } = useCart();
+  const { cartCount } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const [products, setProducts] = useState<Product[]>(staticProducts);
@@ -122,7 +122,6 @@ export default function ProductPage() {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onAdd={() => addToCart({ id: product.id, name: product.name, price: product.price })}
                   onToggleWishlist={() => handleToggleWishlist(product)}
                   isInWishlist={isInWishlist(product.code ?? product.id)}
                 />
@@ -137,20 +136,36 @@ export default function ProductPage() {
 
 function ProductCard({
   product,
-  onAdd,
   onToggleWishlist,
   isInWishlist,
 }: {
   product: Product;
-  onAdd: () => void;
   onToggleWishlist: () => void;
   isInWishlist: boolean;
 }) {
+  const navigate = useNavigate();
+  const detailPath = `/products/${product.code ?? product.id}`;
+
   return (
-    <div className="bg-white rounded-2xl shadow-xl border-4 border-monstera-green p-5 flex flex-col relative">
+    <div
+      className="group bg-white rounded-2xl shadow-xl border-4 border-monstera-green p-5 flex flex-col relative cursor-pointer transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
+      onClick={() => navigate(detailPath)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate(detailPath);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${product.name}`}
+    >
       <button
         type="button"
-        onClick={onToggleWishlist}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleWishlist();
+        }}
         className="absolute top-3 right-3 z-10 p-2 rounded-full bg-white hover:bg-monstera-light transition duration-300 shadow-md"
       >
         <svg
@@ -165,7 +180,7 @@ function ProductCard({
 
       <div className="h-40 rounded-xl bg-monstera-light flex items-center justify-center mb-4 overflow-hidden">
         {product.image ? (
-          <img src={product.image} alt={product.name} className="h-full w-full object-cover rounded-xl" />
+          <img src={product.image} alt={product.name} className="h-full w-full object-cover rounded-xl transition duration-300 group-hover:scale-105" />
         ) : (
           <span className="text-monstera-brown text-sm">Image placeholder</span>
         )}
@@ -174,7 +189,7 @@ function ProductCard({
     <h3 className="font-bold text-xl text-monstera-dark">
         <Link
             to={`/products/${product.id}`}
-            className="font-bold text-xl text-monstera-dark hover:underline"
+            className="font-bold text-xl text-monstera-dark hover:underline group-hover:text-monstera-green transition duration-300"
             >
             {product.name}
         </Link>
@@ -184,13 +199,13 @@ function ProductCard({
 
       <p className="text-monstera-brown text-sm mt-2 line-clamp-2">{product.description}</p>
 
-      <button
-        type="button"
-        onClick={onAdd}
-        className="mt-auto bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-4 rounded-full transition duration-300"
+      <Link
+        to={detailPath}
+        onClick={(e) => e.stopPropagation()}
+        className="mt-auto bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-4 rounded-full transition duration-300 text-center"
       >
         Add to cart
-      </button>
+      </Link>
     </div>
   );
 }
