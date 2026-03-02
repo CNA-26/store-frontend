@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function ContactPage() {
-  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '', issueType: '' });
   const [status, setStatus] = useState<'idle'|'loading'|'sent'|'error'>('idle');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
   };
@@ -14,14 +14,19 @@ export default function ContactPage() {
     e.preventDefault();
     setStatus('loading');
     try {
+      const { issueType, ...rest } = form;
+      const payload = {
+        ...rest,
+        ticket_type: issueType.toLowerCase()
+      };
       const res = await fetch('https://contact-service-rasanjim-traskelr-contact-service.2.rahtiapp.fi/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setStatus('sent');
-        setForm({ name: '', email: '', subject: '', message: '' });
+        setForm({ name: '', email: '', subject: '', message: '', issueType: '' });
       } else {
         setStatus('error');
       }
@@ -39,6 +44,13 @@ export default function ContactPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input name="name" value={form.name} onChange={handleChange} placeholder="Your name" required className="w-full px-4 py-3 border rounded-lg" />
           <input name="email" value={form.email} onChange={handleChange} placeholder="Email" type="email" required className="w-full px-4 py-3 border rounded-lg" />
+          <select name="issueType" value={form.issueType} onChange={handleChange} required className="w-full px-4 py-3 border rounded-lg bg-white">
+            <option value="" disabled>Select issue</option>
+            <option value="General">General</option>
+            <option value="Support">Support</option>
+            <option value="Bug">Bug</option>
+            <option value="Billing">Billing</option>
+          </select>
           <input name="subject" value={form.subject} onChange={handleChange} placeholder="Subject" className="w-full px-4 py-3 border rounded-lg" />
           <textarea name="message" value={form.message} onChange={handleChange} placeholder="Message" required className="w-full px-4 py-3 border rounded-lg h-32" />
 
