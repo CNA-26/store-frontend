@@ -3,6 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useWishlist } from "../contexts/WishlistContext";
 
+const EXTERNAL_LOGIN_URL = "https://users-frontend-users-frontend.2.rahtiapp.fi/login";
+const EXTERNAL_ORDERS_URL = "https://users-frontend-users-frontend.2.rahtiapp.fi/orders";
+
 export default function Profile() {
   const { user, logout, login } = useAuth();
   const storedUser = localStorage.getItem("user");
@@ -45,6 +48,12 @@ export default function Profile() {
           <Link to="/login" className="text-monstera-green font-semibold">
             Go to login
           </Link>
+          <p className="mt-2 text-sm text-monstera-brown">
+            <a href={EXTERNAL_LOGIN_URL} className="hover:underline">Open external login directly</a>
+          </p>
+          <p className="mt-2 text-sm text-monstera-brown">
+            <a href={EXTERNAL_ORDERS_URL} className="hover:underline">Go to orders</a>
+          </p>
         </div>
       </div>
     );
@@ -138,6 +147,12 @@ export default function Profile() {
             >
               Log Out
             </button>
+            <a
+              href={EXTERNAL_ORDERS_URL}
+              className="bg-monstera-dark hover:bg-monstera-green text-white font-bold py-2 px-4 rounded-full"
+            >
+              Orders
+            </a>
             <Link to="/" className="bg-monstera-green hover:bg-monstera-dark text-white font-bold py-2 px-4 rounded-full">
               Back to shop
             </Link>
