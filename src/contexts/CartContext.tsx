@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 export type CartItem = {
   id: string;
@@ -27,12 +27,54 @@ type CartContextShape = {
 };
 
 const CartContext = createContext<CartContextShape | undefined>(undefined);
+const CART_STORAGE_KEY = "monstera_cart_v1";
+
+function readStoredCart(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const candidate = item as Partial<CartItem>;
+        const id = typeof candidate.id === "string" ? candidate.id : "";
+        const name = typeof candidate.name === "string" ? candidate.name : "";
+        const price = Number(candidate.price);
+        const qty = Number(candidate.qty);
+
+        if (!id || !name || !Number.isFinite(price) || !Number.isFinite(qty) || qty <= 0) {
+          return null;
+        }
+
+        return {
+          id,
+          name,
+          price,
+          qty,
+        } as CartItem;
+      })
+      .filter((item): item is CartItem => Boolean(item));
+  } catch {
+    return [];
+  }
+}
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(readStoredCart);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [notification, setNotification] = useState<CartNotification | null>(null);
   const [notificationId, setNotificationId] = useState(0);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch {
+      // Ignore storage write errors
+    }
+  }, [cart]);
 
   const addToCart = (item: AddItem) => {
     setCart((prev) => {

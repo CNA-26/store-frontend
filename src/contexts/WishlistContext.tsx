@@ -125,7 +125,12 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const userId: string | null = user?.id || user?.userId || user?._id || user?.email || null;
+  const tokenUserId = (() => {
+    const meta = getTokenMeta() as { sub?: unknown };
+    return typeof meta.sub === "string" && meta.sub ? meta.sub : null;
+  })();
+
+  const userId: string | null = tokenUserId || user?.id || user?.userId || user?._id || user?.email || null;
 
   // Fetch wishlist from API whenever the logged-in user changes
   useEffect(() => {

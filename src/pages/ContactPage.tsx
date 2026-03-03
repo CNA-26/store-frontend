@@ -1,9 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+function getUserContactPrefill(user: any) {
+  if (!user) return { name: '', email: '' };
+
+  const email = String(
+    user.email ||
+    user.emailAddress ||
+    user.email_address ||
+    user.profile?.email ||
+    ''
+  );
+
+  const name = String(
+    user.name ||
+    user.fullName ||
+    user.displayName ||
+    [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+    ''
+  );
+
+  return { name, email };
+}
 
 export default function ContactPage() {
+  const { user } = useAuth();
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '', issueType: '' });
   const [status, setStatus] = useState<'idle'|'loading'|'sent'|'error'>('idle');
+
+  useEffect(() => {
+    const prefill = getUserContactPrefill(user);
+    setForm((prev) => ({
+      ...prev,
+      name: prev.name || prefill.name,
+      email: prev.email || prefill.email,
+    }));
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -26,7 +59,8 @@ export default function ContactPage() {
       });
       if (res.ok) {
         setStatus('sent');
-        setForm({ name: '', email: '', subject: '', message: '', issueType: '' });
+        const prefill = getUserContactPrefill(user);
+        setForm({ name: prefill.name, email: prefill.email, subject: '', message: '', issueType: '' });
       } else {
         setStatus('error');
       }

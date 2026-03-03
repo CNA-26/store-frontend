@@ -7,11 +7,10 @@ import WishlistPage from "./pages/WishlistPage";
 import ContactPage from "./pages/ContactPage";
 import { CartProvider, useCart } from "./contexts/CartContext";
 import { WishlistProvider, useWishlist } from "./contexts/WishlistContext";
+import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-
-const EXTERNAL_LOGIN_URL = "https://users-frontend-users-frontend.2.rahtiapp.fi/login";
 
 type HomeProduct = {
   id: string;
@@ -464,24 +463,6 @@ function eur(n: number) {
   }).format(n);
 }
 
-function ExternalLoginRedirect() {
-  useEffect(() => {
-    window.location.replace(EXTERNAL_LOGIN_URL);
-  }, []);
-
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 text-center">
-      <p>
-        Redirecting to login…{" "}
-        <a href={EXTERNAL_LOGIN_URL} className="text-monstera-green font-semibold hover:underline">
-          Click here if it does not open automatically
-        </a>
-      </p>
-    </div>
-  );
-}
-
-
 function App() {
   return (
     <AuthProvider>
@@ -497,7 +478,7 @@ function App() {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
-            <Route path="/login" element={<ExternalLoginRedirect />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
           </Routes>

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCart } from "../contexts/CartContext";
 import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const BASE_URL = "https://order-service-git-order-service.2.rahtiapp.fi";
 const API_KEY = "sprint3secret";
@@ -53,6 +54,7 @@ async function safeJson(res: Response) {
 
 export default function CheckoutPage() {
   const { cart, removeFromCart, clearCart } = useCart();
+  const { user } = useAuth();
 
   const items = cart;
 
@@ -69,6 +71,41 @@ export default function CheckoutPage() {
   const [accept, setAccept] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const resolvedEmail = String(
+      user.email ||
+      user.emailAddress ||
+      user.email_address ||
+      user.profile?.email ||
+      ""
+    );
+
+    const resolvedName = String(
+      user.name ||
+      user.fullName ||
+      user.displayName ||
+      [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+      ""
+    ).trim();
+
+    const [parsedFirstName = "", ...lastNameParts] = resolvedName.split(/\s+/).filter(Boolean);
+    const parsedLastName = lastNameParts.join(" ");
+
+    if (resolvedEmail) {
+      setEmail((prev) => prev || resolvedEmail);
+    }
+
+    if (parsedFirstName) {
+      setFirstName((prev) => prev || parsedFirstName);
+    }
+
+    if (parsedLastName) {
+      setLastName((prev) => prev || parsedLastName);
+    }
+  }, [user]);
 
   const subtotal = useMemo(() => items.reduce((s, it) => s + it.price * it.qty, 0), [items]);
 

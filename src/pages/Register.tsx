@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!toast) return;
+        const timer = setTimeout(() => setToast(null), 3500);
+        return () => clearTimeout(timer);
+    }, [toast]);
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
+        setToast(null);
 
         try {
             const response = await fetch(
@@ -26,24 +36,54 @@ export default function Register() {
                 }
             );
 
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                console.error("Register backend error:", data);
-                throw new Error(data.error || "Registration failed");
+                const duplicateEmail =
+                    response.status === 400 ||
+                    response.status === 409 ||
+                    String(data?.code ?? "").toLowerCase().includes("email") ||
+                    String(data?.error ?? "").toLowerCase().includes("already exists");
+
+                if (duplicateEmail) {
+                    setToast({
+                        type: "error",
+                        message: "That email is already registered. Try logging in instead.",
+                    });
+                    return;
+                }
+
+                throw new Error(data?.error || "Registration failed");
             }
 
-            alert("Account created successfully 🌿");
+            setToast({ type: "success", message: "Account created successfully 🌿" });
 
             navigate("/login", { replace: true });
-        } catch (error) {
-            console.error("Register failed:", error);
-            alert("Registration failed. Check console.");
+        } catch (error: any) {
+            setToast({
+                type: "error",
+                message: error?.message || "Registration failed. Please try again.",
+            });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     return (
         <div className="min-h-screen bg-monstera-light flex items-center justify-center px-4 relative">
+            {toast && (
+                <div className="fixed right-4 top-4 z-50">
+                    <div
+                        className={`rounded-xl shadow-2xl px-5 py-3 border-2 ${
+                            toast.type === "error"
+                                ? "bg-red-500 text-white border-red-600"
+                                : "bg-monstera-green text-white border-monstera-dark"
+                        }`}
+                    >
+                        <p className="font-semibold">{toast.message}</p>
+                    </div>
+                </div>
+            )}
             <div className="fixed left-4 top-4 z-50">
                 <Link
                     to="/"
@@ -111,9 +151,10 @@ export default function Register() {
 
                     <button
                         type="submit"
-                        className="w-full bg-monstera-dark hover:bg-monstera-green text-white font-bold py-3 rounded-full transition duration-300"
+                        disabled={isSubmitting}
+                        className="w-full bg-monstera-dark hover:bg-monstera-green disabled:opacity-70 text-white font-bold py-3 rounded-full transition duration-300"
                     >
-                        Create Account
+                        {isSubmitting ? "Creating account..." : "Create Account"}
                     </button>
                 </form>
 
