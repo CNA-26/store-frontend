@@ -1,7 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../contexts/CartContext";
 import { useWishlist } from "../contexts/WishlistContext";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type ProductCategory = "plants" | "flowers" | "other";
+type CategoryFilter = "all" | ProductCategory;
 
 type Product = {
   id: string;
@@ -10,21 +13,39 @@ type Product = {
   image?: string;
   description?: string;
   code?: string;
+  category: ProductCategory | null;
 };
 
 // Product IDs match the wishlist API product codes so wishlisting syncs correctly
 const staticProducts: Product[] = [
-  { id: "P001", name: "Monstera", price: 25, image: "https://placehold.co/500x500?text=Monstera" },
-  { id: "P002", name: "Alocasia", price: 59, image: "https://placehold.co/500x500?text=Alocasia" },
-  { id: "P003", name: "Strelitzia", price: 139, image: "https://placehold.co/500x500?text=Strelitzia" },
-  { id: "4", name: "Snake Plant", price: 24.99 },
+  { id: "P001", name: "Monstera", price: 25, image: "https://placehold.co/500x500?text=Monstera", category: "plants" },
+  { id: "P002", name: "Alocasia", price: 59, image: "https://placehold.co/500x500?text=Alocasia", category: "plants" },
+  { id: "P003", name: "Strelitzia", price: 139, image: "https://placehold.co/500x500?text=Strelitzia", category: "plants" },
+  { id: "4", name: "Snake Plant", price: 24.99, category: "plants" },
 ];
+
+const CATEGORY_TABS: { value: CategoryFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "plants", label: "Plants" },
+  { value: "flowers", label: "Cut flowers" },
+  { value: "other", label: "Other" },
+];
+
+function normalizeCategory(input: unknown): ProductCategory | null {
+  if (typeof input !== "string") return null;
+  const value = input.trim().toLowerCase();
+  if (value === "plants" || value === "plantor") return "plants";
+  if (value === "flowers" || value === "snittblommor") return "flowers";
+  if (value === "other" || value === "övrigt" || value === "ovrigt") return "other";
+  return null;
+}
 
 export default function ProductPage() {
   const { cartCount } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const [products, setProducts] = useState<Product[]>(staticProducts);
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +66,6 @@ export default function ProductPage() {
   ? data.map((p: any) => {
       let image: string | undefined;
 
-      // ✅ FIX: read image_urls array
       if (Array.isArray(p.image_urls) && p.image_urls.length > 0) {
         image = p.image_urls[0];
       }
@@ -57,6 +77,7 @@ export default function ProductPage() {
         image,
         description: p.description_text ?? p.description,
         code: p.product_code ?? undefined,
+        category: normalizeCategory(p.category),
       } as Product;
     })
   : [];
@@ -86,6 +107,11 @@ export default function ProductPage() {
     }
   };
 
+  const categoryFilteredProducts = useMemo(() => {
+    if (categoryFilter === "all") return products;
+    return products.filter((product) => product.category === categoryFilter);
+  }, [products, categoryFilter]);
+
   return (
     <div className="min-h-screen bg-monstera-light">
       <header className="bg-monstera-dark shadow-lg">
@@ -112,13 +138,33 @@ export default function ProductPage() {
           <div className="text-monstera-dark font-bold">Cart: {cartCount}</div>
         </div>
 
+        <div className="mb-6 flex flex-wrap gap-2">
+          {CATEGORY_TABS.map((tab) => {
+            const isActive = categoryFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setCategoryFilter(tab.value)}
+                className={`px-4 py-2 rounded-full font-bold border-2 transition duration-300 ${
+                  isActive
+                    ? "bg-monstera-green text-white border-monstera-green"
+                    : "bg-white text-monstera-dark border-monstera-green hover:bg-monstera-light"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
         {loading ? (
           <div className="text-center py-20">Loading products…</div>
         ) : (
           <>
             {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => (
+              {categoryFilteredProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
