@@ -65,6 +65,36 @@ function getTokenFromUrl(): string | null {
   return null;
 }
 
+function extractRolesFromPayload(payload: Record<string, any>): string[] {
+  const roles: string[] = [];
+
+  const addRole = (value: unknown) => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed) roles.push(trimmed);
+    }
+  };
+
+  const addRoles = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(addRole);
+      return;
+    }
+    addRole(value);
+  };
+
+  addRoles(payload.role);
+  addRoles(payload.roles);
+  addRoles(payload.realm_access?.roles);
+
+  const resourceAccess = payload.resource_access;
+  if (resourceAccess && typeof resourceAccess === "object") {
+    Object.values(resourceAccess).forEach((resource: any) => addRoles(resource?.roles));
+  }
+
+  return [...new Set(roles)];
+}
+
 function buildUserFromToken(token: string): User | null {
   const payload = decodeJwtPayload(token);
   if (!payload) return null;
@@ -77,7 +107,8 @@ function buildUserFromToken(token: string): User | null {
     payload.user_email ||
     null;
   const name = payload.name || payload.given_name || payload.fullName || payload.nickname || null;
-  const role = payload.role || (Array.isArray(payload.roles) ? payload.roles[0] : payload.roles) || null;
+  const roles = extractRolesFromPayload(payload);
+  const role = roles[0] || null;
 
   const fallbackName = email ? String(email).split("@")[0] : "User";
 
@@ -86,14 +117,17 @@ function buildUserFromToken(token: string): User | null {
     email,
     name: name || fallbackName,
     role,
+    roles,
   };
 }
 
 function hydrateUserFromStorageOrToken(): User | null {
+  let storedUser: User | null = null;
+
   try {
     const stored = localStorage.getItem("user");
     if (stored) {
-      return JSON.parse(stored);
+      storedUser = JSON.parse(stored);
     }
   } catch {}
 
@@ -101,7 +135,8 @@ function hydrateUserFromStorageOrToken(): User | null {
     const tokenFromUrl = getTokenFromUrl();
     const tokenFromStorage = localStorage.getItem("accessToken") || localStorage.getItem("token");
     const token = tokenFromUrl || tokenFromStorage;
-    if (!token) return null;
+
+    if (!token) return storedUser;
 
     if (tokenFromUrl) {
       localStorage.setItem("token", tokenFromUrl);
@@ -109,14 +144,19 @@ function hydrateUserFromStorageOrToken(): User | null {
     }
 
     const userFromToken = buildUserFromToken(token);
-    if (!userFromToken) return null;
+    if (!userFromToken) return storedUser;
 
-    localStorage.setItem("user", JSON.stringify(userFromToken));
-    if (userFromToken.email) localStorage.setItem("email", String(userFromToken.email));
-    if (userFromToken.name) localStorage.setItem("name", String(userFromToken.name));
-    return userFromToken;
+    const mergedUser = {
+      ...(storedUser || {}),
+      ...userFromToken,
+    };
+
+    localStorage.setItem("user", JSON.stringify(mergedUser));
+    if (mergedUser.email) localStorage.setItem("email", String(mergedUser.email));
+    if (mergedUser.name) localStorage.setItem("name", String(mergedUser.name));
+    return mergedUser;
   } catch {
-    return null;
+    return storedUser;
   }
 }
 
@@ -125,12 +165,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = (u: User, token?: string) => {
     try {
+      let userToStore = u;
+
       if (token) {
         localStorage.setItem("token", token);
         localStorage.setItem("accessToken", token);
+
+        const userFromToken = buildUserFromToken(token);
+        if (userFromToken) {
+          userToStore = {
+            ...u,
+            ...userFromToken,
+          };
+        }
       }
-      localStorage.setItem("user", JSON.stringify(u));
+
+      localStorage.setItem("user", JSON.stringify(userToStore));
+      if (userToStore?.email) localStorage.setItem("email", String(userToStore.email));
+      if (userToStore?.name) localStorage.setItem("name", String(userToStore.name));
+
+      setUser(userToStore);
+      return;
     } catch {}
+
     setUser(u);
   };
 

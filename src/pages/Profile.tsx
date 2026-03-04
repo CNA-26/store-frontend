@@ -4,6 +4,58 @@ import { useAuth } from "../contexts/AuthContext";
 import { useWishlist } from "../contexts/WishlistContext";
 
 const EXTERNAL_ORDERS_URL = "https://users-frontend-users-frontend.2.rahtiapp.fi/orders";
+const ADMIN_DASHBOARD_BASE_URL = "https://admin-frontend-nico-branch-cna26-admin-frontend.2.rahtiapp.fi/";
+
+function normalizeRole(role: string): string {
+  return role.trim().toLowerCase().replace(/^role[_:\-\s]*/i, "");
+}
+
+function extractRoles(user: any): string[] {
+  const roles: string[] = [];
+
+  const addRole = (value: unknown) => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed) roles.push(trimmed);
+    }
+  };
+
+  const addRoles = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(addRole);
+      return;
+    }
+    addRole(value);
+  };
+
+  addRoles(user?.role);
+  addRoles(user?.roles);
+  addRoles(user?.realm_access?.roles);
+
+  const resourceAccess = user?.resource_access;
+  if (resourceAccess && typeof resourceAccess === "object") {
+    Object.values(resourceAccess).forEach((resource: any) => addRoles(resource?.roles));
+  }
+
+  return [...new Set(roles)];
+}
+
+function isAdminRole(role: string): boolean {
+  const normalized = normalizeRole(role);
+  return normalized === "admin" || normalized.endsWith("_admin") || normalized.endsWith("-admin");
+}
+
+function buildAdminDashboardUrl(token?: string | null): string {
+  if (!token) return ADMIN_DASHBOARD_BASE_URL;
+
+  try {
+    const url = new URL(ADMIN_DASHBOARD_BASE_URL);
+    url.searchParams.set("accessToken", token);
+    return url.toString();
+  } catch {
+    return `${ADMIN_DASHBOARD_BASE_URL}?accessToken=${encodeURIComponent(token)}`;
+  }
+}
 
 function extractEmail(user: any): string {
   return String(
@@ -66,7 +118,9 @@ function getProfileFields(user: any) {
     (usernameFromEmail ? usernameFromEmail.replace(/[\s+\/=<>#%;&]/g, "") : "") ||
     "—";
 
-  const role = String(user?.role || "USER").toUpperCase();
+  const roles = extractRoles(user);
+  const isAdmin = roles.some(isAdminRole);
+  const role = String((roles[0] || user?.role || "USER")).toUpperCase();
   const initials = displayName
     .split(" ")
     .filter(Boolean)
@@ -80,6 +134,7 @@ function getProfileFields(user: any) {
     displayName,
     username: usernameDisplay,
     role,
+    isAdmin,
     initials: initials || "ME",
   };
 }
@@ -95,6 +150,9 @@ export default function Profile() {
   const navigate = useNavigate();
 
   const profile = getProfileFields(activeUser);
+  const adminDashboardUrl = profile.isAdmin
+    ? buildAdminDashboardUrl(localStorage.getItem("accessToken") || localStorage.getItem("token"))
+    : ADMIN_DASHBOARD_BASE_URL;
 
   useEffect(() => {
     const fetchProfileAndOrders = async () => {
@@ -154,6 +212,7 @@ export default function Profile() {
               <div>
                 <h1 className="text-3xl font-bold text-monstera-lime">{profile.displayName}</h1>
                 <p className="text-monstera-light text-sm">{profile.email}</p>
+                {profile.isAdmin && <p className="text-monstera-lime text-xs font-semibold mt-1">Admin</p>}
               </div>
             </div>
             <span className="inline-flex items-center justify-center px-4 py-1 rounded-full bg-monstera-lime text-monstera-dark font-bold text-sm w-fit">
@@ -211,6 +270,11 @@ export default function Profile() {
             </section>
 
             <div className="md:col-span-3 flex flex-wrap gap-3 pt-1">
+              {profile.isAdmin && (
+                <a href={adminDashboardUrl} className="bg-monstera-lime hover:bg-monstera-brown text-monstera-dark hover:text-white font-bold py-2 px-5 rounded-full">
+                  Dashboard
+                </a>
+              )}
               <button
                 onClick={() => {
                   logout();
