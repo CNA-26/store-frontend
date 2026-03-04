@@ -110,12 +110,12 @@ function buildUserFromToken(token: string): User | null {
   const roles = extractRolesFromPayload(payload);
   const role = roles[0] || null;
 
-  const fallbackName = email ? String(email).split("@")[0] : "User";
+  const normalizedName = typeof name === "string" && name.trim() ? name.trim() : null;
 
   return {
     id: payload.sub || payload.user_id || payload.uid || email || "user",
     email,
-    name: name || fallbackName,
+    ...(normalizedName ? { name: normalizedName } : {}),
     role,
     roles,
   };
