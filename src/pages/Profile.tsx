@@ -140,10 +140,8 @@ function getProfileFields(user: any) {
 }
 
 export default function Profile() {
-  const { user, logout, login } = useAuth();
-  const storedUser = localStorage.getItem("user");
-  const parsedStoredUser = storedUser ? JSON.parse(storedUser) : null;
-  const activeUser = user || parsedStoredUser;
+  const { user, logout } = useAuth();
+  const activeUser = user;
   const { wishlist } = useWishlist();
   const [orders, setOrders] = useState<any[]>([]);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -156,17 +154,6 @@ export default function Profile() {
 
   useEffect(() => {
     const fetchProfileAndOrders = async () => {
-      const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
-
-      if (!activeUser) {
-        const rawUser = localStorage.getItem("user");
-        if (rawUser) {
-          try {
-            login(JSON.parse(rawUser), token || undefined);
-          } catch {}
-        }
-      }
-
       const raw = localStorage.getItem("orders");
       setOrders(raw ? JSON.parse(raw) : []);
 
@@ -174,7 +161,7 @@ export default function Profile() {
     };
 
     fetchProfileAndOrders();
-  }, [activeUser, login]);
+  }, []);
 
   if (!profileLoaded) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
 
