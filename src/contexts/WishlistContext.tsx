@@ -37,7 +37,9 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
   const PRODUCT_API = (import.meta.env.VITE_API_BASE as string) || "https://product-service-products-service.2.rahtiapp.fi";
   const logWishlistRequest = (label: string, details: Record<string, unknown>) => {
-    console.debug(`[wishlist] ${label}`, details);
+    if (import.meta.env.DEV) {
+      console.debug(`[wishlist] ${label}`, details);
+    }
   };
   const getTokenMeta = () => {
     if (!token) return { hasToken: false };
@@ -147,7 +149,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setLoading(true);
-    logWishlistRequest("request", { action: "fetchWishlist", method: "GET", url: `${WISHLIST_API}/wishlist`, tokenMeta: getTokenMeta() });
+    logWishlistRequest("request", { action: "fetchWishlist", method: "GET", url: `${WISHLIST_API}/wishlist` });
     fetch(`${WISHLIST_API}/wishlist`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -247,7 +249,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       return [...prev, item];
     });
     // Sync to API (userId is guaranteed non-null here due to early return above)
-    logWishlistRequest("request", { action: "addToWishlist", method: "POST", url: `${WISHLIST_API}/wishlist`, tokenMeta: getTokenMeta(), productCode: item.id });
+    logWishlistRequest("request", { action: "addToWishlist", method: "POST", url: `${WISHLIST_API}/wishlist`, productCode: item.id });
     fetch(`${WISHLIST_API}/wishlist`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -257,15 +259,14 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         logWishlistRequest("response", { action: "addToWishlist", status: r.status, ok: r.ok, productCode: item.id });
         if (!r.ok) {
           const errorBody = await readErrorBody(r);
-          console.error("[wishlist] addToWishlist failed", {
-            status: r.status,
-            statusText: r.statusText,
-            wwwAuthenticate: r.headers.get("www-authenticate"),
-            productCode: item.id,
-            errorBody,
-            errorBodyText: typeof errorBody === "string" ? errorBody : JSON.stringify(errorBody),
-            tokenMeta: getTokenMeta(),
-          });
+          if (import.meta.env.DEV) {
+            console.error("[wishlist] addToWishlist failed", {
+              status: r.status,
+              statusText: r.statusText,
+              productCode: item.id,
+              errorBody,
+            });
+          }
           if (r.status === 401 && typeof errorBody === "object" && errorBody !== null && "detail" in errorBody) {
             const detail = String((errorBody as { detail?: unknown }).detail ?? "").toLowerCase();
             if (detail.includes("expired")) {
@@ -302,7 +303,6 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       action: "removeFromWishlist",
       method: "DELETE",
       url: `${WISHLIST_API}/wishlist/${encodedProductCode}`,
-      tokenMeta: getTokenMeta(),
       productCode: id,
     });
 
@@ -314,15 +314,14 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
         logWishlistRequest("response", { action: "removeFromWishlist", status: r.status, ok: r.ok, productCode: id });
         if (!r.ok) {
           const errorBody = await readErrorBody(r);
-          console.error("[wishlist] removeFromWishlist failed", {
-            status: r.status,
-            statusText: r.statusText,
-            wwwAuthenticate: r.headers.get("www-authenticate"),
-            productCode: id,
-            errorBody,
-            errorBodyText: typeof errorBody === "string" ? errorBody : JSON.stringify(errorBody),
-            tokenMeta: getTokenMeta(),
-          });
+          if (import.meta.env.DEV) {
+            console.error("[wishlist] removeFromWishlist failed", {
+              status: r.status,
+              statusText: r.statusText,
+              productCode: id,
+              errorBody,
+            });
+          }
           if (r.status === 401 && typeof errorBody === "object" && errorBody !== null && "detail" in errorBody) {
             const detail = String((errorBody as { detail?: unknown }).detail ?? "").toLowerCase();
             if (detail.includes("expired")) {
@@ -355,7 +354,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
     try {
-      logWishlistRequest("request", { action: "moveToCart", method: "POST", url: `${WISHLIST_API}/wishlist/move-to-cart`, tokenMeta: getTokenMeta(), productCode, quantity });
+      logWishlistRequest("request", { action: "moveToCart", method: "POST", url: `${WISHLIST_API}/wishlist/move-to-cart`, productCode, quantity });
       const res = await fetch(`${WISHLIST_API}/wishlist/move-to-cart`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -364,16 +363,15 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
       logWishlistRequest("response", { action: "moveToCart", status: res.status, ok: res.ok, productCode, quantity });
       if (!res.ok) {
         const errorBody = await readErrorBody(res);
-        console.error("[wishlist] moveToCart failed", {
-          status: res.status,
-          statusText: res.statusText,
-          wwwAuthenticate: res.headers.get("www-authenticate"),
-          productCode,
-          quantity,
-          errorBody,
-          errorBodyText: typeof errorBody === "string" ? errorBody : JSON.stringify(errorBody),
-          tokenMeta: getTokenMeta(),
-        });
+        if (import.meta.env.DEV) {
+          console.error("[wishlist] moveToCart failed", {
+            status: res.status,
+            statusText: res.statusText,
+            productCode,
+            quantity,
+            errorBody,
+          });
+        }
         if (res.status === 401 && typeof errorBody === "object" && errorBody !== null && "detail" in errorBody) {
           const detail = String((errorBody as { detail?: unknown }).detail ?? "").toLowerCase();
           if (detail.includes("expired")) {

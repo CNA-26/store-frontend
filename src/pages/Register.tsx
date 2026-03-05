@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+const USER_API_BASE =
+  (import.meta.env.VITE_USER_API_BASE as string) ||
+  "https://user-service-cna-26-user-service.2.rahtiapp.fi";
+
 export default function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -22,7 +26,7 @@ export default function Register() {
 
         try {
             const response = await fetch(
-                "https://user-service-cna-26-user-service.2.rahtiapp.fi/api/auth/users",
+                `${USER_API_BASE.replace(/\/$/, "")}/api/auth/users`,
                 {
                     method: "POST",
                     headers: {

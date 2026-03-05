@@ -50,10 +50,11 @@ function buildAdminDashboardUrl(token?: string | null): string {
 
   try {
     const url = new URL(ADMIN_DASHBOARD_BASE_URL);
-    url.searchParams.set("accessToken", token);
+    // Use hash fragment so the token is never sent to the server
+    url.hash = `accessToken=${encodeURIComponent(token)}`;
     return url.toString();
   } catch {
-    return `${ADMIN_DASHBOARD_BASE_URL}?accessToken=${encodeURIComponent(token)}`;
+    return `${ADMIN_DASHBOARD_BASE_URL}#accessToken=${encodeURIComponent(token)}`;
   }
 }
 

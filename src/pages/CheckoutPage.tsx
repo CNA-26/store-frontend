@@ -3,8 +3,14 @@ import { useCart } from "../contexts/CartContext";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-const BASE_URL = "https://order-service-git-order-service.2.rahtiapp.fi";
-const API_KEY = "sprint3secret";
+const BASE_URL =
+  (import.meta.env.VITE_ORDER_API_BASE as string) ||
+  "https://order-service-git-order-service.2.rahtiapp.fi";
+const API_KEY = (import.meta.env.VITE_ORDER_API_KEY as string) || "";
+
+if (import.meta.env.DEV && !API_KEY) {
+  console.warn("[checkout] VITE_ORDER_API_KEY is not set. Order submissions will be rejected by the API.");
+}
 
 type Delivery = "pickup" | "home";
 type Payment = "invoice";
@@ -195,9 +201,6 @@ export default function CheckoutPage() {
         throw new Error(`API error (${apiResponse.status}): ${msg}`);
       }
       
-      // Log the order data for debugging (can be removed later)
-      console.log("Order placed successfully:", response);
-      
       // Clear cart and show success message
       clearCart();
       setSubmitMessage({ 
@@ -220,7 +223,6 @@ export default function CheckoutPage() {
         setSubmitMessage(null);
       }, 2000);
     } catch (error) {
-      console.error("Order submission error:", error);
       setSubmitMessage({ 
         type: "error", 
         text: error instanceof Error ? error.message : "Failed to place order. Please try again."
