@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 const BASE_URL = "https://order-service-git-order-service.2.rahtiapp.fi";
-const API_KEY = "sprint3secret";
+const API_KEY = import.meta.env.VITE_ORDER_API_KEY;
 
 type Delivery = "pickup" | "home";
 type Payment = "invoice";
