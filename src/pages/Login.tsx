@@ -7,6 +7,16 @@ const USER_API_BASE =
   "https://user-service-cna-26-user-service.2.rahtiapp.fi";
 const ADMIN_FRONTEND_URL = "https://admin-frontend-nico-branch-cna26-admin-frontend.2.rahtiapp.fi/";
 
+// Validation functions
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+}
+
+function validatePassword(password: string): boolean {
+  return password.length >= 6;
+}
+
 type LoginResponse = {
   accessToken?: string;
   refreshToken?: string;
@@ -35,10 +45,32 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setValidationErrors({});
+
+    // Validate inputs
+    const errors: { [key: string]: string } = {};
+    if (!email.trim()) {
+      errors.email = "Email is required";
+    } else if (!validateEmail(email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (!password) {
+      errors.password = "Password is required";
+    } else if (!validatePassword(password)) {
+      errors.password = "Password must be at least 6 characters";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -98,22 +130,34 @@ export default function Login() {
             <label className="block text-monstera-dark font-semibold mb-2">Email</label>
             <input
               type="email"
-              required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full px-4 py-3 rounded-full border-2 border-monstera-green focus:outline-none focus:border-monstera-dark"
+              className={`w-full px-4 py-3 rounded-full border-2 focus:outline-none ${
+                validationErrors.email
+                  ? "border-red-500 focus:border-red-600"
+                  : "border-monstera-green focus:border-monstera-dark"
+              }`}
             />
+            {validationErrors.email && (
+              <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-monstera-dark font-semibold mb-2">Password</label>
             <input
               type="password"
-              required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full px-4 py-3 rounded-full border-2 border-monstera-green focus:outline-none focus:border-monstera-dark"
+              className={`w-full px-4 py-3 rounded-full border-2 focus:outline-none ${
+                validationErrors.password
+                  ? "border-red-500 focus:border-red-600"
+                  : "border-monstera-green focus:border-monstera-dark"
+              }`}
             />
+            {validationErrors.password && (
+              <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
+            )}
           </div>
 
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}

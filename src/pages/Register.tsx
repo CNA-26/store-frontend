@@ -1,12 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+// Validation functions
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+}
+
+function validatePassword(password: string): boolean {
+  return password.length >= 6;
+}
+
+function validateName(name: string): boolean {
+  const trimmed = name.trim();
+  return trimmed.length >= 2 && trimmed.length <= 50;
+}
+
 export default function Register() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+    const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -17,8 +33,35 @@ export default function Register() {
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSubmitting(true);
+        setValidationErrors({});
         setToast(null);
+
+        // Validate inputs
+        const errors: { [key: string]: string } = {};
+        if (!name.trim()) {
+            errors.name = "Name is required";
+        } else if (!validateName(name)) {
+            errors.name = "Name must be 2-50 characters";
+        }
+
+        if (!email.trim()) {
+            errors.email = "Email is required";
+        } else if (!validateEmail(email)) {
+            errors.email = "Please enter a valid email address";
+        }
+
+        if (!password) {
+            errors.password = "Password is required";
+        } else if (!validatePassword(password)) {
+            errors.password = "Password must be at least 6 characters";
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setValidationErrors(errors);
+            return;
+        }
+
+        setIsSubmitting(true);
 
         try {
             const response = await fetch(
@@ -116,11 +159,17 @@ export default function Register() {
                         </label>
                         <input
                             type="text"
-                            required
-                            className="w-full px-4 py-3 rounded-full border-2 border-monstera-green focus:outline-none focus:border-monstera-dark"
+                            className={`w-full px-4 py-3 rounded-full border-2 focus:outline-none ${
+                              validationErrors.name
+                                ? "border-red-500 focus:border-red-600"
+                                : "border-monstera-green focus:border-monstera-dark"
+                            }`}
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                         />
+                        {validationErrors.name && (
+                            <p className="text-red-500 text-sm mt-1">{validationErrors.name}</p>
+                        )}
                     </div>
 
                     <div>
@@ -129,11 +178,17 @@ export default function Register() {
                         </label>
                         <input
                             type="email"
-                            required
-                            className="w-full px-4 py-3 rounded-full border-2 border-monstera-green focus:outline-none focus:border-monstera-dark"
+                            className={`w-full px-4 py-3 rounded-full border-2 focus:outline-none ${
+                              validationErrors.email
+                                ? "border-red-500 focus:border-red-600"
+                                : "border-monstera-green focus:border-monstera-dark"
+                            }`}
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
+                        {validationErrors.email && (
+                            <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                        )}
                     </div>
 
                     <div>
@@ -142,11 +197,17 @@ export default function Register() {
                         </label>
                         <input
                             type="password"
-                            required
-                            className="w-full px-4 py-3 rounded-full border-2 border-monstera-green focus:outline-none focus:border-monstera-dark"
+                            className={`w-full px-4 py-3 rounded-full border-2 focus:outline-none ${
+                              validationErrors.password
+                                ? "border-red-500 focus:border-red-600"
+                                : "border-monstera-green focus:border-monstera-dark"
+                            }`}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                         />
+                        {validationErrors.password && (
+                            <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
+                        )}
                     </div>
 
                     <button
