@@ -9,6 +9,33 @@ const API_KEY = import.meta.env.VITE_ORDER_API_KEY;
 type Delivery = "pickup" | "home";
 type Payment = "invoice";
 
+
+function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+}
+
+function validatePhone(phone: string): boolean {
+  const phoneRegex = /^[\d\s+\-().]*$/;
+  const cleaned = phone.trim().replace(/\D/g, "");
+  return phoneRegex.test(phone.trim()) && cleaned.length >= 7 && cleaned.length <= 15;
+}
+
+function validateName(name: string): boolean {
+  const trimmed = name.trim();
+  return trimmed.length >= 2 && trimmed.length <= 50;
+}
+
+function validatePostalCode(postalCode: string): boolean {
+  const trimmed = postalCode.trim();
+  return trimmed.length >= 2 && trimmed.length <= 10;
+}
+
+function validateAddress(address: string): boolean {
+  const trimmed = address.trim();
+  return trimmed.length >= 3 && trimmed.length <= 100;
+}
+
 interface OrderData {
   customer: {
     email: string;
@@ -42,7 +69,7 @@ interface OrderData {
   acceptedTerms: boolean;
 }
 
-// Helper function to safely parse JSON responses
+
 async function safeJson(res: Response) {
   const text = await res.text();
   try {
@@ -71,6 +98,7 @@ export default function CheckoutPage() {
   const [accept, setAccept] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     if (!user) return;
@@ -117,24 +145,66 @@ export default function CheckoutPage() {
   const total = subtotal + deliveryCost;
 
   // Validation
-  const isFormValid = () => {
-    return (
-      email.trim() &&
-      phone.trim() &&
-      firstName.trim() &&
-      lastName.trim() &&
-      street.trim() &&
-      postalCode.trim() &&
-      city.trim() &&
-      accept &&
-      items.length > 0
-    );
+  const validateForm = (): boolean => {
+    const errors: { [key: string]: string } = {};
+
+    if (!email.trim()) {
+      errors.email = "Email is required";
+    } else if (!validateEmail(email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (!phone.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (!validatePhone(phone)) {
+      errors.phone = "Please enter a valid phone number (7-15 digits)";
+    }
+
+    if (!firstName.trim()) {
+      errors.firstName = "First name is required";
+    } else if (!validateName(firstName)) {
+      errors.firstName = "First name must be 2-50 characters";
+    }
+
+    if (!lastName.trim()) {
+      errors.lastName = "Last name is required";
+    } else if (!validateName(lastName)) {
+      errors.lastName = "Last name must be 2-50 characters";
+    }
+
+    if (!street.trim()) {
+      errors.street = "Street address is required";
+    } else if (!validateAddress(street)) {
+      errors.street = "Street address must be 3-100 characters";
+    }
+
+    if (!postalCode.trim()) {
+      errors.postalCode = "Postal code is required";
+    } else if (!validatePostalCode(postalCode)) {
+      errors.postalCode = "Postal code must be 2-10 characters";
+    }
+
+    if (!city.trim()) {
+      errors.city = "City is required";
+    } else if (!validateName(city)) {
+      errors.city = "City name must be 2-50 characters";
+    }
+
+    if (!accept) {
+      errors.accept = "You must accept the terms and conditions";
+    }
+
+    if (items.length === 0) {
+      errors.items = "Your cart is empty";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   // Handle order submission
   const handlePlaceOrder = async () => {
-    if (!isFormValid()) {
-      setSubmitMessage({ type: "error", text: "Please fill in all fields and accept terms." });
+    if (!validateForm()) {
       return;
     }
 
@@ -176,7 +246,7 @@ export default function CheckoutPage() {
         acceptedTerms: true,
       };
 
-      // Call the actual API endpoint
+      
       const apiResponse = await fetch(`${BASE_URL}/api/v1/orders`, {
         method: "POST",
         headers: {
@@ -262,33 +332,61 @@ export default function CheckoutPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                    className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none text-monstera-dark ${
+                      validationErrors.email
+                        ? "border-red-500 focus:border-red-600"
+                        : "border-monstera-lime focus:border-monstera-green"
+                    }`}
                     placeholder="name@example.com"
                   />
+                  {validationErrors.email && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                  )}
                 </Field>
                 <Field label="Phone number">
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                    className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none text-monstera-dark ${
+                      validationErrors.phone
+                        ? "border-red-500 focus:border-red-600"
+                        : "border-monstera-lime focus:border-monstera-green"
+                    }`}
                     placeholder="+358 40 123 4567"
                   />
+                  {validationErrors.phone && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.phone}</p>
+                  )}
                 </Field>
 
                 <Field label="First name">
                   <input
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                    className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none text-monstera-dark ${
+                      validationErrors.firstName
+                        ? "border-red-500 focus:border-red-600"
+                        : "border-monstera-lime focus:border-monstera-green"
+                    }`}
                   />
+                  {validationErrors.firstName && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.firstName}</p>
+                  )}
                 </Field>
                 <Field label="Last name">
                   <input
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                    className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none text-monstera-dark ${
+                      validationErrors.lastName
+                        ? "border-red-500 focus:border-red-600"
+                        : "border-monstera-lime focus:border-monstera-green"
+                    }`}
                   />
+                  {validationErrors.lastName && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.lastName}</p>
+                  )}
                 </Field>
               </div>
             </Section>
@@ -315,9 +413,16 @@ export default function CheckoutPage() {
                     <input
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                      className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none text-monstera-dark ${
+                        validationErrors.street
+                          ? "border-red-500 focus:border-red-600"
+                          : "border-monstera-lime focus:border-monstera-green"
+                      }`}
                       placeholder="Examplekatu 12 A"
                     />
+                    {validationErrors.street && (
+                      <p className="text-red-500 text-sm mt-1">{validationErrors.street}</p>
+                    )}
                   </Field>
                 </div>
 
@@ -325,19 +430,33 @@ export default function CheckoutPage() {
                   <input
                     value={postalCode}
                     onChange={(e) => setPostalCode(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                    className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none text-monstera-dark ${
+                      validationErrors.postalCode
+                        ? "border-red-500 focus:border-red-600"
+                        : "border-monstera-lime focus:border-monstera-green"
+                    }`}
                     placeholder="00100"
                     inputMode="numeric"
                   />
+                  {validationErrors.postalCode && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.postalCode}</p>
+                  )}
                 </Field>
 
                 <Field label="City">
                   <input
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-monstera-lime focus:outline-none focus:border-monstera-green text-monstera-dark"
+                    className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none text-monstera-dark ${
+                      validationErrors.city
+                        ? "border-red-500 focus:border-red-600"
+                        : "border-monstera-lime focus:border-monstera-green"
+                    }`}
                     placeholder="Helsinki"
                   />
+                  {validationErrors.city && (
+                    <p className="text-red-500 text-sm mt-1">{validationErrors.city}</p>
+                  )}
                 </Field>
               </div>
             </Section>
@@ -390,16 +509,21 @@ export default function CheckoutPage() {
               <p className="text-xs mt-1">Prices include VAT (ALV).</p>
             </div>
 
-            <label className="mt-5 flex gap-2 text-monstera-dark">
-              <input
-                type="checkbox"
-                checked={accept}
-                onChange={(e) => setAccept(e.target.checked)}
-              />
-              <span className="text-sm">
-                I accept terms & privacy policy.
-              </span>
-            </label>
+            <div className="mt-5">
+              <label className="flex gap-2 text-monstera-dark">
+                <input
+                  type="checkbox"
+                  checked={accept}
+                  onChange={(e) => setAccept(e.target.checked)}
+                />
+                <span className="text-sm">
+                  I accept terms & privacy policy.
+                </span>
+              </label>
+              {validationErrors.accept && (
+                <p className="text-red-500 text-sm mt-1">{validationErrors.accept}</p>
+              )}
+            </div>
 
             {submitMessage && (
               <div
