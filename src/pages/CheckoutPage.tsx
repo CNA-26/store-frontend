@@ -265,9 +265,6 @@ export default function CheckoutPage() {
         throw new Error(`API error (${apiResponse.status}): ${msg}`);
       }
       
-      // Log the order data for debugging (can be removed later)
-      console.log("Order placed successfully:", response);
-      
       // Clear cart and show success message
       clearCart();
       setSubmitMessage({ 
