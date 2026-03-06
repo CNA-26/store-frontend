@@ -14,6 +14,10 @@ dist-ssr
 .env
 .env.local
 
+# Order service runtime data and dependencies
+order-service/node_modules
+order-service/data
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

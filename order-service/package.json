@@ -1,0 +1,16 @@
+{
+  "name": "order-service",
+  "version": "1.0.0",
+  "description": "Order management API service for Monstera store",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "uuid": "^13.0.0"
+  }
+}
