@@ -3,6 +3,12 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Vite reads VITE_* variables at build time, so expose BuildConfig args here.
+ARG VITE_ORDER_API_URL=https://order-service-git-order-service.2.rahtiapp.fi/
+ARG VITE_ORDER_API_KEY
+ENV VITE_ORDER_API_URL=${VITE_ORDER_API_URL}
+ENV VITE_ORDER_API_KEY=${VITE_ORDER_API_KEY}
+
 # Copy package files
 COPY package*.json ./
 
