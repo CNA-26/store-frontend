@@ -187,11 +187,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const token = getAuthToken();
     if (user?.id && token) {
       try {
+        // Convert product_id to integer (API requirement)
+        const productIdInt = parseInt(item.id, 10);
+        if (isNaN(productIdInt)) {
+          console.warn(`Product ID "${item.id}" is not a valid integer, skipping API sync`);
+          return;
+        }
+
         const requestBody = {
-          product_id: item.id,
+          product_id: productIdInt,
           name: item.name,
           price: item.price,
           quantity: 1,
+          image_url: "", // Optional field, using empty string
         };
 
         const response = await fetch(`${CART_API_BASE_URL}/cart/${user.id}/add-item`, {
@@ -236,7 +244,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const token = getAuthToken();
     if (user?.id && token) {
       try {
-        const response = await fetch(`${CART_API_BASE_URL}/cart/${user.id}/item/${id}`, {
+        // Convert product_id to integer (API requirement)
+        const productIdInt = parseInt(id, 10);
+        if (isNaN(productIdInt)) {
+          console.warn(`Product ID "${id}" is not a valid integer, skipping API sync`);
+          return;
+        }
+
+        const response = await fetch(`${CART_API_BASE_URL}/cart/${user.id}/item/${productIdInt}`, {
           method: "DELETE",
           headers: getAuthHeaders(),
         });
@@ -253,6 +268,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             status: response.status,
             statusText: response.statusText,
             productId: id,
+            productIdInt,
             errorData,
           });
           // Don't throw, just log and continue with local cart
