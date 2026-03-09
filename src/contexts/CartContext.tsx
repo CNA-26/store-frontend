@@ -187,15 +187,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const token = getAuthToken();
     if (user?.id && token) {
       try {
+        const requestBody = {
+          product_id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: 1,
+        };
+
         const response = await fetch(`${CART_API_BASE_URL}/cart/${user.id}/add-item`, {
           method: "POST",
           headers: getAuthHeaders(),
-          body: JSON.stringify({
-            product_id: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: 1,
-          }),
+          body: JSON.stringify(requestBody),
         });
 
         if (response.status === 401) {
@@ -205,7 +207,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!response.ok) {
-          throw new Error(`Failed to add item: ${response.statusText}`);
+          const errorData = await response.json().catch(() => null);
+          console.error("Cart API error:", {
+            status: response.status,
+            statusText: response.statusText,
+            requestBody,
+            errorData,
+          });
+          // Don't throw, just log and continue with local cart
+          return;
         }
 
         // Refresh cart from server to ensure sync
@@ -238,7 +248,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (!response.ok) {
-          throw new Error(`Failed to remove item: ${response.statusText}`);
+          const errorData = await response.json().catch(() => null);
+          console.error("Cart API delete error:", {
+            status: response.status,
+            statusText: response.statusText,
+            productId: id,
+            errorData,
+          });
+          // Don't throw, just log and continue with local cart
+          return;
         }
 
         // Refresh cart from server to ensure sync
