@@ -34,6 +34,26 @@ type CartContextShape = {
 const CartContext = createContext<CartContextShape | undefined>(undefined);
 const CART_STORAGE_KEY = "monstera_cart_v1";
 
+// Helper function to convert string product codes to numeric IDs for the API
+// Uses a simple hash function to create consistent numeric IDs from strings
+function stringToNumericId(str: string): number {
+  // Try to parse as integer first
+  const parsed = parseInt(str, 10);
+  if (!isNaN(parsed) && String(parsed) === str) {
+    return parsed;
+  }
+  
+  // Generate a hash for non-numeric strings
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Ensure positive number
+  return Math.abs(hash);
+}
+
 function readStoredCart(): CartItem[] {
   try {
     const raw = localStorage.getItem(CART_STORAGE_KEY);
@@ -187,12 +207,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const token = getAuthToken();
     if (user?.id && token) {
       try {
-        // Convert product_id to integer (API requirement)
-        const productIdInt = parseInt(item.id, 10);
-        if (isNaN(productIdInt)) {
-          console.warn(`Product ID "${item.id}" is not a valid integer, skipping API sync`);
-          return;
-        }
+        // Convert product code to numeric ID (API requirement)
+        const productIdInt = stringToNumericId(item.id);
 
         const requestBody = {
           product_id: productIdInt,
@@ -244,12 +260,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const token = getAuthToken();
     if (user?.id && token) {
       try {
-        // Convert product_id to integer (API requirement)
-        const productIdInt = parseInt(id, 10);
-        if (isNaN(productIdInt)) {
-          console.warn(`Product ID "${id}" is not a valid integer, skipping API sync`);
-          return;
-        }
+        // Convert product code to numeric ID (API requirement)
+        const productIdInt = stringToNumericId(id);
 
         const response = await fetch(`${CART_API_BASE_URL}/cart/${user.id}/item/${productIdInt}`, {
           method: "DELETE",
@@ -267,7 +279,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           console.error("Cart API delete error:", {
             status: response.status,
             statusText: response.statusText,
-            productId: id,
+            productCode: id,
             productIdInt,
             errorData,
           });
