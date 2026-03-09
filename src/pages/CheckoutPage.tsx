@@ -80,7 +80,7 @@ async function safeJson(res: Response) {
 }
 
 export default function CheckoutPage() {
-  const { cart, removeFromCart, clearCart } = useCart();
+  const { cart, removeFromCart, clearCart, isLoading, error } = useCart();
   const { user } = useAuth();
 
   const items = cart;
@@ -472,29 +472,41 @@ export default function CheckoutPage() {
           <aside className="bg-white rounded-2xl shadow-xl p-6 border-4 border-monstera-green h-fit">
             <h2 className="text-2xl font-bold text-monstera-dark mb-4">Order summary</h2>
 
-            <div className="space-y-3">
-              {items.map((it) => (
-                <div key={it.id} className="flex justify-between items-start gap-3">
-                  <div>
-                    <p className="font-bold text-monstera-dark">{it.name}</p>
-                    <p className="text-monstera-brown text-sm">Qty: {it.qty}</p>
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <p className="text-sm">{error}</p>
+              </div>
+            )}
+
+            {isLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-monstera-green"></div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {items.map((it) => (
+                  <div key={it.id} className="flex justify-between items-start gap-3">
+                    <div>
+                      <p className="font-bold text-monstera-dark">{it.name}</p>
+                      <p className="text-monstera-brown text-sm">Qty: {it.qty}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <p className="font-bold text-monstera-green">{eur(it.price * it.qty)}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(it.id)}
+                        title="Remove"
+                        className="p-2 rounded-full hover:bg-monstera-light"
+                      >
+                        <svg className="w-5 h-5 text-monstera-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 3h4l1 4H9l1-4z" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <p className="font-bold text-monstera-green">{eur(it.price * it.qty)}</p>
-                    <button
-                      type="button"
-                      onClick={() => removeFromCart(it.id)}
-                      title="Remove"
-                      className="p-2 rounded-full hover:bg-monstera-light"
-                    >
-                      <svg className="w-5 h-5 text-monstera-brown" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M10 3h4l1 4H9l1-4z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             <div className="mt-5 border-t pt-4 space-y-2 text-monstera-brown">
               <Row label="Subtotal" value={eur(subtotal)} />
