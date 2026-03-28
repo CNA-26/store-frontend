@@ -5,6 +5,10 @@ import { useWishlist } from "../contexts/WishlistContext";
 
 const EXTERNAL_ORDERS_URL = "https://users-frontend-users-frontend.2.rahtiapp.fi/orders";
 const ADMIN_DASHBOARD_BASE_URL = "https://admin-frontend-nico-branch-cna26-admin-frontend.2.rahtiapp.fi/";
+const ORDER_SERVICE_URL =
+  (import.meta.env.VITE_ORDER_SERVICE_URL as string) ||
+  "https://order-service-git-order-service.2.rahtiapp.fi";
+const ORDER_API_KEY = import.meta.env.VITE_ORDER_API_KEY as string;
 
 function normalizeRole(role: string): string {
   return role.trim().toLowerCase().replace(/^role[_:\-\s]*/i, "");
@@ -154,14 +158,32 @@ export default function Profile() {
 
   useEffect(() => {
     const fetchProfileAndOrders = async () => {
-      const raw = localStorage.getItem("orders");
-      setOrders(raw ? JSON.parse(raw) : []);
+      const email = activeUser ? extractEmail(activeUser) : null;
+      if (email && ORDER_API_KEY) {
+        try {
+          const res = await fetch(
+            `${ORDER_SERVICE_URL}/orders?email=${encodeURIComponent(email)}`,
+            { headers: { "X-API-Key": ORDER_API_KEY } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setOrders(Array.isArray(data.orders) ? data.orders : []);
+          } else {
+            setOrders([]);
+          }
+        } catch {
+          setOrders([]);
+        }
+      } else {
+        const raw = localStorage.getItem("orders");
+        setOrders(raw ? JSON.parse(raw) : []);
+      }
 
       setProfileLoaded(true);
     };
 
     fetchProfileAndOrders();
-  }, []);
+  }, [activeUser]);
 
   if (!profileLoaded) return <div className="min-h-screen flex items-center justify-center">Loading…</div>;
 
@@ -248,8 +270,22 @@ export default function Profile() {
               ) : (
                 <div className="space-y-3">
                   {orders.map((order, index) => (
-                    <div key={index} className="rounded-xl bg-monstera-light border border-monstera-green/40 px-4 py-3 text-monstera-dark">
-                      {order.summary || JSON.stringify(order)}
+                    <div key={order.orderId || index} className="rounded-xl bg-monstera-light border border-monstera-green/40 px-4 py-3 text-monstera-dark">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <span className="font-bold">Order #{order.orderId}</span>
+                        <span className={`text-sm font-semibold px-2 py-0.5 rounded-full w-fit ${order.status === "shipped" ? "bg-monstera-lime text-monstera-dark" : "bg-monstera-green/20 text-monstera-dark"}`}>
+                          {order.status || "confirmed"}
+                        </span>
+                      </div>
+                      {order.createdAt && (
+                        <p className="text-xs text-monstera-brown mt-1">{new Date(order.createdAt).toLocaleDateString()}</p>
+                      )}
+                      {Array.isArray(order.items) && order.items.length > 0 && (
+                        <p className="text-sm mt-1">{(order.items as { name: string; quantity: number }[]).map((it) => `${it.name} ×${it.quantity}`).join(", ")}</p>
+                      )}
+                      {order.trackingNumber && (
+                        <p className="text-xs text-monstera-brown mt-1">Tracking: {order.trackingNumber}</p>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -3,7 +3,9 @@ import { useCart } from "../contexts/CartContext";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-const BASE_URL = "https://order-service-git-order-service.2.rahtiapp.fi";
+const BASE_URL =
+  (import.meta.env.VITE_ORDER_SERVICE_URL as string) ||
+  "https://order-service-git-order-service.2.rahtiapp.fi";
 const API_KEY = import.meta.env.VITE_ORDER_API_KEY;
 
 type Delivery = "pickup" | "home";
